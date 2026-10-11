@@ -52,7 +52,7 @@ Menu Bar → Cài đặt → Kiểu gõ → **VNI**
 2. Xóa app từ Applications
 3. (Tùy chọn) Xóa cấu hình:
    ```bash
-   rm -rf ~/.config/tuigoai ~/Library/Preferences/org.gonhanh.*
+   rm -rf ~/.config/tuigoai ~/Library/Preferences/com.ronnhd.TuiGoAI.*
    ```
 
 ---

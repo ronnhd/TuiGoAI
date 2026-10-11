@@ -70,9 +70,9 @@ build: format ## Build core + macos app
 	@./scripts/build/core.sh
 	@./scripts/build/macos.sh
 	@./scripts/build/windows.sh
-	@killall GoNhanh 2>/dev/null || true
+	@killall TuiGoAI 2>/dev/null || true
 	@sleep 0.5
-	@open platforms/macos/build/Release/GoNhanh.app
+	@open platforms/macos/build/Release/TuiGoAI.app
 
 build-linux: format
 	@cd platforms/linux && ./scripts/build.sh
@@ -81,8 +81,8 @@ clean: ## Clean build + settings
 	@cd core && cargo clean
 	@rm -rf platforms/macos/build
 	@rm -rf platforms/linux/build
-	@defaults delete org.gonhanh.GoNhanh 2>/dev/null || true
-	@osascript -e 'tell application "System Events"' -e 'repeat with i from (count of every login item) to 1 by -1' -e 'set li to login item i' -e 'if name of li is "GoNhanh" and path of li contains "/build/" then delete login item i' -e 'end repeat' -e 'end tell' 2>/dev/null || true
+	@defaults delete com.ronnhd.TuiGoAI 2>/dev/null || true
+	@osascript -e 'tell application "System Events"' -e 'repeat with i from (count of every login item) to 1 by -1' -e 'set li to login item i' -e 'if name of li is "TuiGoAI" and path of li contains "/build/" then delete login item i' -e 'end repeat' -e 'end tell' 2>/dev/null || true
 	@echo "✅ Cleaned build artifacts + settings + all login items"
 
 # ============================================================================
@@ -91,9 +91,9 @@ clean: ## Clean build + settings
 
 .PHONY: watch perf test-22k test-100k test-dict
 watch:
-	@rm -f /tmp/gonhanh_debug.log && touch /tmp/gonhanh_debug.log
-	@echo "📋 Watching /tmp/gonhanh_debug.log (Ctrl+C to stop)"
-	@tail -f /tmp/gonhanh_debug.log
+	@rm -f /tmp/tuigoai_debug.log && touch /tmp/tuigoai_debug.log
+	@echo "📋 Watching /tmp/tuigoai_debug.log (Ctrl+C to stop)"
+	@tail -f /tmp/tuigoai_debug.log
 
 test-22k: ## Run heavy 22k tests + generate typing orders
 	@cd core && cargo test -- --ignored --nocapture
@@ -106,13 +106,13 @@ test-dict: ## Run dictionary tests (VN: 100%, EN: 97%)
 	@./scripts/test/dict.sh
 
 perf:
-	@PID=$$(pgrep -f "GoNhanh.app" | head -1); \
+	@PID=$$(pgrep -f "TuiGoAI.app" | head -1); \
 	if [ -n "$$PID" ]; then \
-		echo "📊 GoNhanh (PID $$PID)"; \
+		echo "📊 TuiGoAI (PID $$PID)"; \
 		ps -o rss=,vsz= -p $$PID | awk '{printf "RAM: %.1f MB | VSZ: %.0f MB\n", $$1/1024, $$2/1024}'; \
 		echo "Threads: $$(ps -M -p $$PID | tail -n +2 | wc -l | tr -d ' ')"; \
 		leaks $$PID 2>/dev/null | grep -E "(Physical|leaked)" | head -3; \
-	else echo "GoNhanh not running"; fi
+	else echo "TuiGoAI not running"; fi
 
 # ============================================================================
 # Install
@@ -123,11 +123,11 @@ setup: ## Setup dev environment
 	@./scripts/setup/macos.sh
 
 install: build
-	@osascript -e 'tell application "System Events"' -e 'repeat with i from (count of every login item) to 1 by -1' -e 'set li to login item i' -e 'if name of li is "GoNhanh" and path of li contains "/build/" then delete login item i' -e 'end repeat' -e 'end tell' 2>/dev/null || true
-	@killall GoNhanh 2>/dev/null || true
+	@osascript -e 'tell application "System Events"' -e 'repeat with i from (count of every login item) to 1 by -1' -e 'set li to login item i' -e 'if name of li is "TuiGoAI" and path of li contains "/build/" then delete login item i' -e 'end repeat' -e 'end tell' 2>/dev/null || true
+	@killall TuiGoAI 2>/dev/null || true
 	@sleep 0.5
-	@cp -r platforms/macos/build/Release/GoNhanh.app /Applications/
-	@open /Applications/GoNhanh.app
+	@cp -r platforms/macos/build/Release/TuiGoAI.app /Applications/
+	@open /Applications/TuiGoAI.app
 
 dmg: build ## Create DMG installer
 	@./scripts/release/dmg-background.sh
@@ -146,7 +146,7 @@ release: ## Patch release (1.0.9 → 1.0.10)
 	@./scripts/release/notes.sh v$(NEXT_PATCH) > /tmp/release_notes.md
 	@git tag -a v$(NEXT_PATCH) -F /tmp/release_notes.md --cleanup=verbatim
 	@git push origin main v$(NEXT_PATCH)
-	@echo "→ https://github.com/khaphanspace/gonhanh.org/releases"
+	@echo "→ https://github.com/ronnhd/TuiGoAI/releases"
 
 release-minor: ## Minor release (1.0.9 → 1.1.0)
 	@git pull --rebase origin main --tags
@@ -155,7 +155,7 @@ release-minor: ## Minor release (1.0.9 → 1.1.0)
 	@./scripts/release/notes.sh v$(NEXT_MINOR) > /tmp/release_notes.md
 	@git tag -a v$(NEXT_MINOR) -F /tmp/release_notes.md --cleanup=verbatim
 	@git push origin main v$(NEXT_MINOR)
-	@echo "→ https://github.com/khaphanspace/gonhanh.org/releases"
+	@echo "→ https://github.com/ronnhd/TuiGoAI/releases"
 
 release-major: ## Major release (1.0.9 → 2.0.0)
 	@git pull --rebase origin main --tags
@@ -164,9 +164,9 @@ release-major: ## Major release (1.0.9 → 2.0.0)
 	@./scripts/release/notes.sh v$(NEXT_MAJOR) > /tmp/release_notes.md
 	@git tag -a v$(NEXT_MAJOR) -F /tmp/release_notes.md --cleanup=verbatim
 	@git push origin main v$(NEXT_MAJOR)
-	@echo "→ https://github.com/khaphanspace/gonhanh.org/releases"
+	@echo "→ https://github.com/ronnhd/TuiGoAI/releases"
 
 pre-release: ## Trigger pre-release build on CI
-	@gh workflow run pre-release.yml -f platform=macos -R khaphanspace/gonhanh.org
+	@gh workflow run pre-release.yml -f platform=macos -R ronnhd/TuiGoAI
 	@echo "✅ Pre-release build triggered"
-	@echo "→ https://github.com/khaphanspace/gonhanh.org/actions/workflows/pre-release.yml"
+	@echo "→ https://github.com/ronnhd/TuiGoAI/actions/workflows/pre-release.yml"

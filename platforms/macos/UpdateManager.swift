@@ -131,7 +131,7 @@ class UpdateManager: NSObject, ObservableObject {
     func restartToUpdate() {
         guard case let .readyToInstall(dmgPath) = state else { return }
 
-        let appName = "GoNhanh"
+        let appName = "TuiGoAI"
         let appBundlePath = Bundle.main.bundlePath
         let pid = ProcessInfo.processInfo.processIdentifier
 
@@ -156,7 +156,7 @@ class UpdateManager: NSObject, ObservableObject {
         open "$DEST"
         """
 
-        let tmpScript = FileManager.default.temporaryDirectory.appendingPathComponent("gonhanh-update.sh")
+        let tmpScript = FileManager.default.temporaryDirectory.appendingPathComponent("tuigoai-update.sh")
         try? script.write(to: tmpScript, atomically: true, encoding: .utf8)
         try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tmpScript.path)
 

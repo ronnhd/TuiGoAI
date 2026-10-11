@@ -1,4 +1,4 @@
-@testable import GoNhanh
+@testable import TuiGoAI
 import XCTest
 
 // MARK: - Keyboard Shortcut Tests

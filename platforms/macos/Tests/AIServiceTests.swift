@@ -1,5 +1,5 @@
 import XCTest
-@testable import GoNhanh
+@testable import TuiGoAI
 
 final class AIServiceTests: XCTestCase {
     func testDefaultConfig() {

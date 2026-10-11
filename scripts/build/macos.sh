@@ -44,7 +44,7 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  --version, -v VERSION  Build with custom version (e.g., 0.9.0 for testing updates)"
-            echo "  --clean                Remove existing GoNhanh app and clear permissions before building"
+            echo "  --clean                Remove existing TuiGoAI app and clear permissions before building"
             echo "  --sign, -s             Sign with Developer ID (requires certificate in Keychain)"
             echo "  --notarize, -n         Sign and notarize for distribution (requires Apple ID credentials)"
             echo "  --help                 Show this help message"
@@ -74,39 +74,39 @@ done
 if [ "$CLEAN_INSTALL" = true ]; then
     echo "Cleaning existing installation..."
 
-    # Kill running GoNhanh processes
-    if pgrep -f "GoNhanh" > /dev/null 2>&1; then
-        echo "Stopping running GoNhanh processes..."
-        pkill -f "GoNhanh" 2>/dev/null || true
+    # Kill running TuiGoAI processes
+    if pgrep -f "TuiGoAI" > /dev/null 2>&1; then
+        echo "Stopping running TuiGoAI processes..."
+        pkill -f "TuiGoAI" 2>/dev/null || true
         # Wait for process to terminate
         sleep 1
         # Force kill if still running
-        if pgrep -f "GoNhanh" > /dev/null 2>&1; then
-            echo "Force killing GoNhanh..."
-            pkill -9 -f "GoNhanh" 2>/dev/null || true
+        if pgrep -f "TuiGoAI" > /dev/null 2>&1; then
+            echo "Force killing TuiGoAI..."
+            pkill -9 -f "TuiGoAI" 2>/dev/null || true
             sleep 1
         fi
-        echo "GoNhanh processes stopped."
+        echo "TuiGoAI processes stopped."
     else
-        echo "No running GoNhanh process found."
+        echo "No running TuiGoAI process found."
     fi
 
     # Remove from /Applications (requires sudo)
-    if [ -d "/Applications/GoNhanh.app" ]; then
-        echo "Removing /Applications/GoNhanh.app (requires sudo)..."
-        sudo rm -rf "/Applications/GoNhanh.app"
+    if [ -d "/Applications/TuiGoAI.app" ]; then
+        echo "Removing /Applications/TuiGoAI.app (requires sudo)..."
+        sudo rm -rf "/Applications/TuiGoAI.app"
     fi
 
     # Remove from Input Methods
-    if [ -d "$HOME/Library/Input Methods/GoNhanh.app" ]; then
-        echo "Removing ~/Library/Input Methods/GoNhanh.app..."
-        rm -rf "$HOME/Library/Input Methods/GoNhanh.app"
+    if [ -d "$HOME/Library/Input Methods/TuiGoAI.app" ]; then
+        echo "Removing ~/Library/Input Methods/TuiGoAI.app..."
+        rm -rf "$HOME/Library/Input Methods/TuiGoAI.app"
     fi
 
     # Clear TCC database (Accessibility permissions) - requires Full Disk Access or SIP disabled
     echo "Note: To fully reset Accessibility permissions, go to:"
     echo "  System Settings > Privacy & Security > Accessibility"
-    echo "  Remove GoNhanh from the list manually"
+    echo "  Remove TuiGoAI from the list manually"
     echo ""
 
     # Clear input source registration
@@ -117,14 +117,14 @@ if [ "$CLEAN_INSTALL" = true ]; then
     echo ""
 fi
 
-# Always kill running GoNhanh before build (even without --clean)
-if pgrep -x "GoNhanh" > /dev/null 2>&1; then
-    echo "Stopping running GoNhanh..."
-    pkill -x "GoNhanh" 2>/dev/null || true
+# Always kill running TuiGoAI before build (even without --clean)
+if pgrep -x "TuiGoAI" > /dev/null 2>&1; then
+    echo "Stopping running TuiGoAI..."
+    pkill -x "TuiGoAI" 2>/dev/null || true
     sleep 0.5
     # Force kill if still running
-    if pgrep -x "GoNhanh" > /dev/null 2>&1; then
-        pkill -9 -x "GoNhanh" 2>/dev/null || true
+    if pgrep -x "TuiGoAI" > /dev/null 2>&1; then
+        pkill -9 -x "TuiGoAI" 2>/dev/null || true
         sleep 0.5
     fi
 fi
@@ -178,12 +178,12 @@ fi
 # Build macOS app with xcodebuild
 cd "$(dirname "$0")/../../platforms/macos"
 
-if [ -d "GoNhanh.xcodeproj" ]; then
+if [ -d "TuiGoAI.xcodeproj" ]; then
     echo "Building with Xcode..."
 
     if [ "$SIGN_APP" = true ]; then
         echo "Building with Developer ID signing..."
-        xcodebuild -scheme GoNhanh \
+        xcodebuild -scheme TuiGoAI \
             -configuration Release \
             -destination 'platform=macOS,arch=arm64' \
             -destination 'platform=macOS,arch=x86_64' \
@@ -197,7 +197,7 @@ if [ -d "GoNhanh.xcodeproj" ]; then
             2>&1 | grep -v "Using the first of multiple matching destinations"
     else
         echo "Building with ad-hoc signing (development)..."
-        xcodebuild -scheme GoNhanh \
+        xcodebuild -scheme TuiGoAI \
             -configuration Release \
             -destination 'platform=macOS,arch=arm64' \
             -destination 'platform=macOS,arch=x86_64' \
@@ -210,54 +210,40 @@ if [ -d "GoNhanh.xcodeproj" ]; then
     # Copy app from DerivedData to local build directory
     echo "Copying app to build directory..."
     mkdir -p build/Release
-    cp -R "build/DerivedData/Build/Products/Release/GoNhanh.app" build/Release/
+    cp -R "build/DerivedData/Build/Products/Release/TuiGoAI.app" build/Release/
 
     # Sign app with entitlements
     echo "Signing app with entitlements..."
     if [ "$SIGN_APP" = true ]; then
         codesign --force --deep --sign "$APPLE_SIGNING_IDENTITY" \
-            --entitlements GoNhanh.entitlements.production \
+            --entitlements TuiGoAI.entitlements.production \
             --options runtime \
             --timestamp \
-            build/Release/GoNhanh.app
+            build/Release/TuiGoAI.app
         echo "Signed with Developer ID: $APPLE_SIGNING_IDENTITY"
     else
         # Use Developer ID cert if available, fallback to ad-hoc
         DEV_CERT=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/' || echo "")
         if [ -n "$DEV_CERT" ]; then
             codesign --force --deep --sign "$DEV_CERT" \
-                --entitlements GoNhanh.entitlements \
-                build/Release/GoNhanh.app
+                --entitlements TuiGoAI.entitlements \
+                build/Release/TuiGoAI.app
             echo "Signed with: $DEV_CERT"
         else
             codesign --force --deep --sign - \
-                --entitlements GoNhanh.entitlements \
-                build/Release/GoNhanh.app
+                --entitlements TuiGoAI.entitlements \
+                build/Release/TuiGoAI.app
             echo "Signed with ad-hoc identity (development only)"
         fi
     fi
 
     # Verify signature
     echo "Verifying signature..."
-    codesign -vvv --deep --strict build/Release/GoNhanh.app
+    codesign -vvv --deep --strict build/Release/TuiGoAI.app
     echo "Signature verified!"
 
-    # Grant Accessibility permission (update TCC database with new csreq)
-    BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" build/Release/GoNhanh.app/Contents/Info.plist)
-    TCC_DB="/Library/Application Support/com.apple.TCC/TCC.db"
-    NEW_CSREQ=$(codesign -d -r- build/Release/GoNhanh.app 2>&1 | awk -F ' => ' '/designated/{print $2}' | csreq -r- -b /dev/stdout | xxd -p | tr -d '\n' | tr '[:lower:]' '[:upper:]')
-    OLD_CSREQ=$(sqlite3 "$TCC_DB" "SELECT hex(csreq) FROM access WHERE service='kTCCServiceAccessibility' AND client='$BUNDLE_ID'" 2>/dev/null || echo "")
-    if [ "$NEW_CSREQ" != "$OLD_CSREQ" ]; then
-        echo "Updating Accessibility permission..."
-        sudo sqlite3 "$TCC_DB" "
-            DELETE FROM access WHERE service='kTCCServiceAccessibility' AND client='$BUNDLE_ID';
-            INSERT INTO access (service, client, client_type, auth_value, auth_reason, auth_version, csreq, indirect_object_identifier_type, indirect_object_identifier, flags, last_modified)
-            VALUES ('kTCCServiceAccessibility', '$BUNDLE_ID', 0, 2, 4, 1, X'$NEW_CSREQ', 0, 'UNUSED', 0, CAST(strftime('%s','now') AS INTEGER));
-        "
-        echo "✅ Accessibility granted"
-    else
-        echo "✅ Accessibility: already granted"
-    fi
+    echo "Note: To grant Accessibility permission on first launch, go to:"
+    echo "  System Settings > Privacy & Security > Accessibility -> Enable TuiGoAI" 
 
     # Notarize if requested
     if [ "$NOTARIZE_APP" = true ]; then
@@ -266,11 +252,11 @@ if [ -d "GoNhanh.xcodeproj" ]; then
 
         # Create ZIP for notarization
         echo "Creating ZIP for notarization..."
-        ditto -c -k --keepParent build/Release/GoNhanh.app build/Release/GoNhanh-notarize.zip
+        ditto -c -k --keepParent build/Release/TuiGoAI.app build/Release/TuiGoAI-notarize.zip
 
         # Submit for notarization
         echo "Submitting to Apple for notarization (this may take a few minutes)..."
-        xcrun notarytool submit build/Release/GoNhanh-notarize.zip \
+        xcrun notarytool submit build/Release/TuiGoAI-notarize.zip \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_APP_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
@@ -279,21 +265,21 @@ if [ -d "GoNhanh.xcodeproj" ]; then
 
         # Staple the notarization ticket
         echo "Stapling notarization ticket..."
-        xcrun stapler staple build/Release/GoNhanh.app
+        xcrun stapler staple build/Release/TuiGoAI.app
 
         # Verify notarization
         echo "Verifying notarization..."
-        spctl -a -vvv -t install build/Release/GoNhanh.app
+        spctl -a -vvv -t install build/Release/TuiGoAI.app
 
         # Cleanup
-        rm -f build/Release/GoNhanh-notarize.zip
+        rm -f build/Release/TuiGoAI-notarize.zip
 
         echo "Notarization completed!"
     fi
 
     echo ""
     echo "macOS app built successfully!"
-    echo "App: platforms/macos/build/Release/GoNhanh.app"
+    echo "App: platforms/macos/build/Release/TuiGoAI.app"
 
     if [ "$SIGN_APP" = true ]; then
         echo "Status: Signed with Developer ID"
@@ -313,8 +299,8 @@ else
     echo "Steps:"
     echo "  1. Open Xcode"
     echo "  2. Create new macOS App project"
-    echo "  3. Name: GoNhanh"
+    echo "  3. Name: TuiGoAI"
     echo "  4. Location: platforms/macos/"
-    echo "  5. Add Swift files from GoNhanh/ folder"
-    echo "  6. Link libgonhanh_core.a in Build Phases"
+    echo "  5. Add Swift files from TuiGoAI/ folder"
+    echo "  6. Link libtuigoai_core.a in Build Phases"
 fi

@@ -38,7 +38,7 @@
 			containerPortal = A1000010000000000000001 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = A1000006000000000000001;
-			remoteInfo = GoNhanh;
+			remoteInfo = TuiGoAI;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -64,11 +64,11 @@
 		LOGVWR002 /* LogViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogViewer.swift; sourceTree = "<group>"; };
 		APKRSH002 /* AppPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPickerSheet.swift; sourceTree = "<group>"; };
 		UPDATECHK002 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
-		A1000003000000000000001 /* GoNhanh.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GoNhanh.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1000003000000000000001 /* TuiGoAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TuiGoAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B1000002000000000000001 /* KeyboardShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutTests.swift; sourceTree = "<group>"; };
 		B1000002000000000000002 /* LaunchAtLoginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginTests.swift; sourceTree = "<group>"; };
 		B1000002000000000000003 /* SoundManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManagerTests.swift; sourceTree = "<group>"; };
-		B1000003000000000000002 /* GoNhanhTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GoNhanhTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1000003000000000000002 /* TuiGoAITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TuiGoAITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -121,8 +121,8 @@
 		A1000005000000000000002 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A1000003000000000000001 /* GoNhanh.app */,
-				B1000003000000000000002 /* GoNhanhTests.xctest */,
+				A1000003000000000000001 /* TuiGoAI.app */,
+				B1000003000000000000002 /* TuiGoAITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -141,9 +141,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A1000006000000000000001 /* GoNhanh */ = {
+		A1000006000000000000001 /* TuiGoAI */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A1000007000000000000001 /* Build configuration list for PBXNativeTarget "GoNhanh" */;
+			buildConfigurationList = A1000007000000000000001 /* Build configuration list for PBXNativeTarget "TuiGoAI" */;
 			buildPhases = (
 				A1000008000000000000001 /* Sources */,
 				A1000004000000000000001 /* Frameworks */,
@@ -153,16 +153,16 @@
 			);
 			dependencies = (
 			);
-			name = GoNhanh;
+			name = TuiGoAI;
 			packageProductDependencies = (
 			);
-			productName = GoNhanh;
-			productReference = A1000003000000000000001 /* GoNhanh.app */;
+			productName = TuiGoAI;
+			productReference = A1000003000000000000001 /* TuiGoAI.app */;
 			productType = "com.apple.product-type.application";
 		};
-		B1000006000000000000001 /* GoNhanhTests */ = {
+		B1000006000000000000001 /* TuiGoAITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = B1000007000000000000001 /* Build configuration list for PBXNativeTarget "GoNhanhTests" */;
+			buildConfigurationList = B1000007000000000000001 /* Build configuration list for PBXNativeTarget "TuiGoAITests" */;
 			buildPhases = (
 				B1000008000000000000001 /* Sources */,
 				B1000004000000000000001 /* Frameworks */,
@@ -173,9 +173,9 @@
 			dependencies = (
 				B1000003000000000000003 /* PBXTargetDependency */,
 			);
-			name = GoNhanhTests;
-			productName = GoNhanhTests;
-			productReference = B1000003000000000000002 /* GoNhanhTests.xctest */;
+			name = TuiGoAITests;
+			productName = TuiGoAITests;
+			productReference = B1000003000000000000002 /* TuiGoAITests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -212,8 +212,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A1000006000000000000001 /* GoNhanh */,
-				B1000006000000000000001 /* GoNhanhTests */,
+				A1000006000000000000001 /* TuiGoAI */,
+				B1000006000000000000001 /* TuiGoAITests */,
 			);
 		};
 /* End PBXProject section */
@@ -277,7 +277,7 @@
 /* Begin PBXTargetDependency section */
 		B1000003000000000000003 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = A1000006000000000000001 /* GoNhanh */;
+			target = A1000006000000000000001 /* TuiGoAI */;
 			targetProxy = B1000003000000000000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -435,7 +435,7 @@
 					"-framework",
 					Carbon,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.gonhanh.GoNhanh;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ronnhd.TuiGoAI;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -476,7 +476,7 @@
 					"-framework",
 					Carbon,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.gonhanh.GoNhanh;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ronnhd.TuiGoAI;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -492,11 +492,11 @@
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = org.gonhanh.GoNhanhTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ronnhd.TuiGoAITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GoNhanh.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/GoNhanh";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TuiGoAI.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TuiGoAI";
 			};
 			name = Debug;
 		};
@@ -509,18 +509,18 @@
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = org.gonhanh.GoNhanhTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ronnhd.TuiGoAITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GoNhanh.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/GoNhanh";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TuiGoAI.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TuiGoAI";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A1000007000000000000001 /* Build configuration list for PBXNativeTarget "GoNhanh" */ = {
+		A1000007000000000000001 /* Build configuration list for PBXNativeTarget "TuiGoAI" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A1000013000000000000001 /* Debug */,
@@ -538,7 +538,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		B1000007000000000000001 /* Build configuration list for PBXNativeTarget "GoNhanhTests" */ = {
+		B1000007000000000000001 /* Build configuration list for PBXNativeTarget "TuiGoAITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B1000013000000000000001 /* Debug */,

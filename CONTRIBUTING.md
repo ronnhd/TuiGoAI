@@ -33,7 +33,7 @@ cargo build --release
 
 ### For macOS UI
 
-1. Open `platforms/macos/GoNhanh.xcodeproj` in Xcode
+1. Open `platforms/macos/TuiGoAI.xcodeproj` in Xcode
 2. Make changes to Swift files
 3. Test in Xcode
 4. Build and run
