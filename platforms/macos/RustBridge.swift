@@ -1413,6 +1413,12 @@ private func triggerRestoreShortcut(flags: CGEventFlags, proxy: CGEventTapProxy)
     RustBridge.clearBuffer()
 }
 
+/// Inject accepted Ghost Text using the same fallback chain as ordinary IME text.
+func injectGhostText(_ text: String, proxy: CGEventTapProxy) {
+    let (method, delays) = detectMethod()
+    TextInjector.shared.injectSync(bs: 0, text: text, method: method, delays: delays, proxy: proxy)
+}
+
 private func keyboardCallback(
     proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon _: UnsafeMutableRawPointer?
 ) -> Unmanaged<CGEvent>? {
@@ -1539,6 +1545,16 @@ private func keyboardCallback(
 
     let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
 
+    if let accepted = GhostTextManager.acceptSuggestionFromHook(keyCode: keyCode, flags: flags) {
+        injectGhostText(accepted, proxy: proxy)
+        DispatchQueue.main.async { GhostTextManager.shared.dismiss() }
+        return nil
+    }
+
+    Task { @MainActor in
+        GhostTextManager.shared.handleKeystroke(keyCode: keyCode, isKeyDown: true)
+    }
+
     // Log all keystrokes (only when debug enabled - no overhead otherwise)
     if Log.isEnabled {
         if let char = event.keyboardCharacter() {
@@ -1547,7 +1563,6 @@ private func keyboardCallback(
             Log.info("keyDown: code=\(keyCode)")
         }
     }
-
     // Custom shortcut to toggle Vietnamese (default: Ctrl+Space)
     if matchesToggleShortcut(keyCode: keyCode, flags: flags) {
         DispatchQueue.main.async { NotificationCenter.default.post(name: .toggleVietnamese, object: nil) }

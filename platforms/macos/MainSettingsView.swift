@@ -36,12 +36,14 @@ class SoundManager {
 
 enum NavigationPage: String, CaseIterable {
     case settings = "Cài đặt"
+    case ai = "AI Copilot"
     case advanced = "Nâng cao"
     case about = "Giới thiệu"
 
     var icon: String {
         switch self {
         case .settings: "gearshape"
+        case .ai: "wand.and.stars"
         case .advanced: "wrench.and.screwdriver"
         case .about: "bolt.fill"
         }
@@ -901,6 +903,9 @@ struct MainSettingsView: View {
                 SettingsPageView(appState: appState).padding(28)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .ai:
+            AISettingsView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .advanced:
             AdvancedSettingsView(appState: appState).padding(28)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

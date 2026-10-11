@@ -161,6 +161,13 @@ public final class AIService: @unchecked Sendable {
         }
     }
 
+    public func setAIEnabled(_ enabled: Bool) {
+        var config = loadConfig()
+        config.isEnabled = enabled
+        config.providerType = .localOllama
+        saveConfig(config)
+    }
+
     // MARK: - Low-level Completion Call
 
     public func complete(

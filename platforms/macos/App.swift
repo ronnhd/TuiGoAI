@@ -22,6 +22,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // native Vietnamese/non-Latin sources are gated correctly on cold launch.
         InputSourceObserver.shared.start()
         menuBar = MenuBarController()
+        DispatchQueue.main.async {
+            ChangelogWindowController.shared.showIfNeeded()
+        }
     }
 
     func applicationWillTerminate(_: Notification) {
