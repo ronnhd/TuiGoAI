@@ -546,7 +546,7 @@ class AppState: ObservableObject {
     }
 
     func exportShortcuts() -> String {
-        var lines = [";Gõ Nhanh - Bảng gõ tắt"]
+        var lines = [";TuiGoAI - Bảng gõ tắt"]
         for shortcut in shortcuts where !shortcut.key.isEmpty {
             // Issue #343: Escape newlines in export so format stays one-entry-per-line
             let escapedValue = shortcut.value.replacingOccurrences(of: "\\", with: "\\\\")

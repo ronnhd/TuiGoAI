@@ -31,7 +31,7 @@ class UpdateChecker {
     static let shared = UpdateChecker()
 
     /// Use /releases instead of /releases/latest to get highest version, not most recent publish
-    private let githubAPIURL = "https://api.github.com/repos/khaphanspace/gonhanh.org/releases"
+    private let githubAPIURL = "https://api.github.com/repos/ronnhd/TuiGoAI/releases"
 
     private init() {}
 

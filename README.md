@@ -1,198 +1,100 @@
 <h1 align="center">
-  <img src="assets/logo.png" alt="Gõ Nhanh Logo" width="128" height="128"><br>
-  Gõ Nhanh
+  TuiGoAI (Tui Gõ AI)
 </h1>
 
 <p align="center">
-  <a href="https://unikorn.vn/p/gonhanh?ref=gonhanh" target="_blank"><img src="https://unikorn.vn/api/widgets/badge/gonhanh?theme=dark" alt="Gõ Nhanh trên Unikorn.vn" width="250" height="54" /></a>
-  <a href="https://launch.j2team.dev/products/go-nhanh?ref=gonhanh" target="_blank"><img src="https://launch.j2team.dev/badge/go-nhanh/dark" alt="Gõ Nhanh on J2TEAM Launch" width="250" height="54" /></a>
+  <strong>Bộ gõ tiếng Việt hiện đại tích hợp AI Copilot cho macOS</strong><br>
+  Tốc độ gõ 0ms latency · Auto-restore tiếng Anh · Trợ lý AI ngay tại con trỏ văn bản
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/downloads/khaphanspace/gonhanh.org/total?label=Downloads" />
   <img src="https://img.shields.io/badge/License-BSD--3--Clause-blue.svg" alt="License: BSD-3-Clause">
   <img src="https://img.shields.io/badge/Platform-macOS-000000?logo=apple&logoColor=white" />
-  <img src="https://img.shields.io/badge/Platform-Linux-FCC624?logo=linux&logoColor=black" />
-</p>
-
-<p align="center">
-  <strong>Bộ gõ tiếng Việt miễn phí, nhanh, ổn định cho macOS.</strong><br>
-  Cài là dùng. Không quảng cáo. Không thu thập dữ liệu.
-</p>
-
-<p align="center">
-  <img src="assets/screenshot.png" alt="Gõ Nhanh Light Mode" width="100%">
+  <img src="https://img.shields.io/badge/Engine-Rust%20%2B%20Swift-orange" />
+  <img src="https://img.shields.io/badge/AI-Local%20LLM%20%2F%20OpenAI-purple" />
 </p>
 
 ---
 
-## 🌟 Contributors
+## 💡 Giới thiệu
 
-<table>
-  <tr>
-    <td><a href="CONTRIBUTORS.md#-sponsors"><b>💖 Sponsors (15)</b></a></td>
-    <td align="center"><a href="https://github.com/blueberry6401"><img src="https://avatars.githubusercontent.com/u/7337535?v=4" width="40" style="border-radius:50%"/><br/><sub>blueberry6401</sub></a></td>
-    <td align="center"><a href="https://github.com/nguyenvulong"><img src="https://avatars.githubusercontent.com/u/1311412?v=4" width="40" style="border-radius:50%"/><br/><sub>nguyenvulong</sub></a></td>
-    <td align="center"><a href="https://github.com/nguyencaokyvn"><img src="https://avatars.githubusercontent.com/u/2754877?v=4" width="40" style="border-radius:50%"/><br/><sub>nguyencaokyvn</sub></a></td>
-    <td align="center"><a href="https://github.com/kientux"><img src="https://avatars.githubusercontent.com/u/4200743?v=4" width="40" style="border-radius:50%"/><br/><sub>kientux</sub></a></td>
-    <td align="center"><a href="https://github.com/tuandev-nv"><img src="https://avatars.githubusercontent.com/u/6220969?v=4" width="40" style="border-radius:50%"/><br/><sub>tuandev-nv</sub></a></td>
-  </tr>
-  <tr>
-    <td><a href="CONTRIBUTORS.md#-code-contributors"><b>💻 Code (6)</b></a></td>
-    <td align="center"><a href="https://github.com/khaphanspace"><img src="https://avatars.githubusercontent.com/u/16458012?v=4" width="40" style="border-radius:50%"/><br/><sub>khaphanspace</sub></a></td>
-    <td align="center"><a href="https://github.com/tuananhht94"><img src="https://avatars.githubusercontent.com/u/4498336?v=4" width="40" style="border-radius:50%"/><br/><sub>tuananhht94</sub></a></td>
-    <td align="center"><a href="https://github.com/brotherbui"><img src="https://avatars.githubusercontent.com/u/80878082?v=4" width="40" style="border-radius:50%"/><br/><sub>brotherbui</sub></a></td>
-    <td align="center"><a href="https://github.com/sonnh-uit"><img src="https://avatars.githubusercontent.com/u/62142647?v=4" width="40" style="border-radius:50%"/><br/><sub>sonnh-uit</sub></a></td>
-    <td align="center"><a href="https://github.com/oornasp"><img src="https://avatars.githubusercontent.com/u/16114639?v=4" width="40" style="border-radius:50%"/><br/><sub>oornasp</sub></a></td>
-  </tr>
-  <tr>
-    <td><a href="CONTRIBUTORS.md#-cộng-đồng"><b>💬 Cộng đồng (144)</b></a></td>
-    <td align="center"><a href="https://github.com/ducfilan"><img src="https://avatars.githubusercontent.com/u/1677524?v=4" width="40" style="border-radius:50%"/><br/><sub>ducfilan</sub></a></td>
-    <td align="center"><a href="https://github.com/m0n99"><img src="https://avatars.githubusercontent.com/u/62840357?v=4" width="40" style="border-radius:50%"/><br/><sub>m0n99</sub></a></td>
-    <td align="center"><a href="https://github.com/voquanghoa"><img src="https://avatars.githubusercontent.com/u/10450325?v=4" width="40" style="border-radius:50%"/><br/><sub>voquanghoa</sub></a></td>
-    <td align="center"><a href="https://github.com/meichengg"><img src="https://avatars.githubusercontent.com/u/25204246?v=4" width="40" style="border-radius:50%"/><br/><sub>meichengg</sub></a></td>
-    <td align="center"><a href="https://github.com/tuantmtb"><img src="https://avatars.githubusercontent.com/u/9003486?v=4" width="40" style="border-radius:50%"/><br/><sub>tuantmtb</sub></a></td>
-  </tr>
-</table>
-
-Xem danh sách đầy đủ tại [CONTRIBUTORS.md](CONTRIBUTORS.md).
+**TuiGoAI** ("Tui Gõ AI") là bộ gõ tiếng Việt mã nguồn mở thế hệ mới dành cho macOS, kết hợp giữa:
+1. **Engine gõ tiếng Việt hiệu năng cao**: Kế thừa nền tảng từ bộ gõ [GoNhanh](https://github.com/khaphanspace/gonhanh.org) (Rust core), độ trễ <10ms, không lag, không nuốt phím trong Terminal/IDE.
+2. **AI Copilot ngay tại con trỏ**: Kích hoạt trợ lý AI xử lý văn bản (sửa chính tả theo ngữ cảnh, tóm tắt, viết lại, dịch thuật, ghost text gợi ý) mà không làm gián đoạn luồng gõ phím.
+3. **Linh hoạt & Tôn trọng riêng tư**: Hỗ trợ chạy hoàn toàn offline qua **Local LLM** (Ollama, MLX trên Apple Silicon) hoặc kết nối qua **OpenAI / Custom API Endpoints**.
 
 ---
 
-## 📥 Tải về & Cài đặt
+## ✨ Tính năng nổi bật
 
-### 🍺 Homebrew (macOS - Khuyến nghị)
+### ⚡ 1. Bộ gõ chuẩn xác & Siêu tốc
+- **Độ trễ tiệm cận 0ms**: Xử lý Telex/VNI bằng lõi Rust thuần túy, phản hồi tức thì dưới 10ms.
+- **Auto-restore tiếng Anh**: Tự động nhận diện từ tiếng Anh khi nhấn Space (`text`, `expect`, `user`, `with`, `push`...) mà không cần tắt bộ gõ.
+- **Phục hồi bằng ESC**: Bấm nhầm dấu? Chỉ cần nhấn `ESC` để khôi phục nguyên dạng chuỗi phím tiếng Anh vừa gõ.
+- **Tối ưu cho Developer**: Tương thích tốt với Terminal, VS Code, Cursor, Zed, Chrome và các ứng dụng Electron.
 
+### 🤖 2. AI Copilot tại chỗ (In-place Assistant)
+- **Kích hoạt tức thì**: Nhấn phím tắt nhanh (`Option + Space`) để mở thanh điều khiển AI ngay tại vị trí con trỏ.
+- **Sửa chính tả ngữ cảnh**: Tự động rà soát và sửa lỗi chính tả tiếng Việt dựa trên toàn bộ câu.
+- **Viết tiếp & Biến đổi giọng văn**: Hỗ trợ tóm tắt, viết dài hơn, đổi tone giọng (trang trọng/thân mật) hoặc dịch nhanh sang tiếng Anh.
+- **Async & An toàn**: Luồng AI chạy hoàn toàn bất đồng bộ ở background, không bao giờ block luồng gõ phím. Tự động tắt khi ở trường mật khẩu.
+
+### 🔌 3. Tùy chọn mô hình đa dạng (Pluggable AI Backends)
+- **Local Free AI**: Kết nối với Ollama hoặc MLX (Qwen 2.5, Llama 3) chạy trực tiếp trên NPU của chip Apple Silicon, bảo mật dữ liệu tuyệt đối và không tốn phí API.
+- **Cloud / Custom API**: Hỗ trợ các endpoint chuẩn OpenAI (ChatGPT Plus/Pro, DeepSeek, Claude, v.v.).
+
+---
+
+## 🛠️ Cài đặt & Build từ mã nguồn
+
+### Yêu cầu hệ thống
+- macOS 13.0 (Ventura) trở lên
+- Xcode 15+ & Swift 6.0+
+- Rust (Cargo) 1.80+
+
+### Build ứng dụng
 ```bash
-brew install --cask gonhanh
+# 1. Clone repository
+git clone https://github.com/ronnhd/TuiGoAI.git
+cd TuiGoAI
+
+# 2. Kiểm tra bộ test của Rust Core
+cargo test --manifest-path core/Cargo.toml
+
+# 3. Build ứng dụng macOS
+make build
 ```
 
-> **Cập nhật:** App tự động kiểm tra phiên bản mới mỗi 24h. Hoặc dùng `brew upgrade --cask gonhanh`.
+Sau khi build xong, app sẽ nằm tại `platforms/macos/build/Release/TuiGoAI.app`.
 
-### 📦 Tải thủ công
+---
 
-|  Nền tảng   | Trạng thái  |                                               Tải xuống                                                | Hướng dẫn                                |
-| :---------: | :---------: | :----------------------------------------------------------------------------------------------------: | :--------------------------------------- |
-|  **macOS**  | ✅ Sẵn sàng | [📥 Tải GoNhanh.dmg](https://github.com/khaphanspace/gonhanh.org/releases/latest/download/GoNhanh.dmg) | [Xem hướng dẫn](docs/install-macos.md)   |
-| **Linux x86_64** | 🧪 Beta | [📥 Tải gonhanh-linux.tar.gz](https://github.com/khaphanspace/gonhanh.org/releases/latest/download/gonhanh-linux.tar.gz) | [Xem hướng dẫn](docs/install-linux.md) |
-| **Windows** |   🧪 Beta   |                                                   —                                                    | [Xem hướng dẫn](docs/install-windows.md) |
+## 📐 Kiến trúc kỹ thuật
 
-<details>
-<summary><strong>⚠️ macOS: App không mở được?</strong></summary>
+Dự án tuân thủ nghiêm ngặt nguyên tắc **Strict Core Separation**:
 
-```bash
-# Chạy lệnh này trong Terminal sau khi kéo app vào Applications
-xattr -cr /Applications/GoNhanh.app
+```text
+┌────────────────────────────────────────────────────────┐
+│                      macOS App                         │
+│  (SwiftUI: MenuBar, Settings, Shortcuts, Overlay UI)   │
+└──────────────┬──────────────────────────┬──────────────┘
+               │ (Direct Events)          │ (Async Triggers)
+               ▼                          ▼
+┌─────────────────────────────┐  ┌───────────────────────┐
+│     gonhanh-core (Rust)     │  │   TuiGoAI Copilot     │
+│  Telex/VNI State Machine    │  │   Local LLM / OpenAI  │
+│  Latency < 10ms (Native)    │  │   Background Tasks    │
+└─────────────────────────────┘  └───────────────────────┘
 ```
 
-Sau đó: **System Settings → Privacy & Security → Accessibility → Bật GoNhanh**
-
-</details>
-
-<details>
-<summary><strong>⚠️ Bị nuốt chữ khi dùng Claude Code trong IDE (VS Code, Cursor, Windsurf...)?</strong></summary>
-
-1. **Menu bar** → icon Gõ Nhanh → **Cài đặt** → tab **Nâng cao**
-2. Phần "Tuỳ chỉnh theo ứng dụng" → nhấn **+** → chọn IDE đang dùng
-3. Kéo thanh **Delay** sang phải → **"Rất cao"** (tím)
-4. Tự động lưu, xong.
-
-> Mỗi máy, mỗi IDE có độ trễ phản hồi khác nhau, hãy tuỳ chỉnh mức delay cho phù hợp.
-
-</details>
-
-## ✨ Tính năng
-
-### 🔥 Highlight
-
-- 🔍 **Fix lỗi Chrome/Spotlight/Arc/Claude Code/JetBrains** - Tự động sửa dính chữ trong address bar, thanh tìm kiếm, Arc history
-- 🔤 **Auto-restore tiếng Anh** — Gõ `text` `expect` `user` `push` `sort` → tự khôi phục khi nhấn space. [Xem chi tiết ↓](#-auto-restore-tiếng-anh)
-- ⎋ **Gõ ESC tự khôi phục** — Gõ `user` → `úẻ` → nhấn **ESC** → `user`. Không cần tắt bộ gõ khi gõ tiếng Anh!
-- 🧠 **Chuyển chế độ thông minh** — Tự nhớ ON/OFF cho từng app. Code trên VS Code (tắt) → Chat trên Slack (bật) → tự chuyển
-- 🔄 **Tự động theo input source** — Dùng tiếng Nhật, Hàn, Trung... → Gõ Nhanh tự tắt. Chuyển về tiếng Anh → tự bật lại
-- ⚡ **Siêu nhanh** — <10ms latency · ~20MB RAM. Hỗ trợ đa nền tảng trên cùng một engine
-
-<p align="center">
-  <video src="https://github.com/user-attachments/assets/957ec6c6-d6df-4ca9-9161-0a1bb6cf98ce" width="100%"></video>
-</p>
-
-### 📋 Đầy đủ
-
-- ⌨️ **Telex & VNI** — Chọn kiểu gõ quen thuộc
-- 🎯 **Đặt dấu chuẩn** — Tự động theo [quy tắc mới](https://vi.wikipedia.org/wiki/Quy_t%E1%BA%AFc_%C4%91%E1%BA%B7t_d%E1%BA%A5u_thanh_c%E1%BB%A7a_ch%E1%BB%AF_Qu%E1%BB%91c_ng%E1%BB%AF): `hoà`, `khoẻ`, `thuỷ`
-- 🔠 **Tự viết hoa đầu câu** — Gõ `ok.` Space `b` → `B` hoa. Hỗ trợ `.` `!` `?` và Enter
-- ✂️ **Gõ tắt** — `vn` → `Việt Nam`, `ko` → `không`
-- 🔌 **Mọi app** — Claude Code, VS Code, Zed, Chrome, Notion, Terminal, Ghostty...
-- 🌗 **Dark/Light** — Theo hệ thống
-- 💻 **Đa nền tảng** — macOS, Linux, Windows (beta)
-
-### 🛡️ Cam kết "Ba Không"
-
-- 🚫 **Không thu phí** — Miễn phí mãi mãi, không bản Pro
-- 🚫 **Không quảng cáo** — Không popup, không làm phiền
-- 🚫 **Không theo dõi** — Offline 100%, mã nguồn mở
+1. **`core/`**: Rust core xử lý biến âm, từ điển kiểm tra âm tiết tiếng Việt và thuật toán auto-restore tiếng Anh.
+2. **`platforms/macos/`**: Tầng Native macOS chịu trách nhiệm lắng nghe sự kiện phím qua `CGEventTap` và hiển thị UI.
+3. **`platforms/macos/AIService.swift`**: Module giao tiếp bất đồng bộ với các provider LLM.
 
 ---
 
-## 🔤 Auto-restore tiếng Anh
+## 📄 Bản quyền & Ghi nhận (Credits)
 
-Khi gõ tiếng Anh bằng Telex, một số chữ cái bị nhận nhầm thành dấu tiếng Việt (`s` → sắc, `w` → ư...). **Gõ Nhanh tự động khôi phục** khi nhấn **Space**.
-
-### 📝 So sánh: macOS Telex vs Gõ Nhanh
-
-| Gõ         | macOS Telex | Gõ Nhanh      |
-| :--------- | :---------- | :------------ |
-| `text `    | `têt ` ❌   | `text ` ✅    |
-| `expect `  | `ễpct ` ❌  | `expect ` ✅  |
-| `perfect ` | `pềct ` ❌  | `perfect ` ✅ |
-| `with `    | `ưith ` ❌  | `with ` ✅    |
-| `tesla `   | `téla ` ❌  | `tesla ` ✅   |
-| `luxury `  | `lủuy ` ❌  | `luxury ` ✅  |
-| `case `    | `cáe ` ❌   | `case ` ✅    |
-| `wow `     | `ươ ` ❌    | `wow ` ✅     |
-
-### ⚠️ Giới hạn
-
-Một số từ tiếng Anh tạo ra cấu trúc **hợp lệ tiếng Việt** nên không thể tự nhận diện:
-
-| Từ Anh | Kết quả Telex | Lý do        |
-| :----- | :------------ | :----------- |
-| `mix`  | `mĩ`          | M + ĩ hợp lệ |
-| `box`  | `bõ`          | B + õ hợp lệ |
-| `six`  | `sĩ`          | S + ĩ hợp lệ |
-
-**Giải pháp:** Nhấn **ESC** sau khi gõ để khôi phục, hoặc tắt bộ gõ tạm thời (⌘+Space).
-
----
-
-## ❤️‍🔥 Động lực
-
-Tôi (**Kha Phan**) bắt đầu dự án này vì các bộ gõ hiện tại thường xuyên gặp lỗi khi tôi làm việc với **Claude Code**.
-
-Từ nhu cầu giải quyết vấn đề cá nhân, Gõ Nhanh được phát triển thành một sản phẩm hoàn thiện dành tặng cộng đồng. Đây cũng là sự tiếp nối và kế thừa từ **UniKey**, **OpenKey** và **EVKey**.
-
-Hy vọng Gõ Nhanh góp phần truyền cảm hứng cho cộng đồng mã nguồn mở tại Việt Nam.
-
-Nếu các bạn thấy phần mềm hữu ích có thể [ủng hộ tôi tại đây](https://github.com/sponsors/khaphanspace).
-
----
-
-## 🔧 Tài liệu kỹ thuật
-
-- [Hướng dẫn phát triển](docs/development.md) — Build, test, contribute
-- [Kiến trúc hệ thống](docs/system-architecture.md) — FFI, luồng dữ liệu, app compatibility
-- [Thuật toán xử lý](docs/core-engine-algorithm.md) — Pipeline 7 giai đoạn
-- [Quy tắc kiểm tra âm tiết](docs/validation-algorithm.md) — 5 quy tắc kiểm tra âm tiết
-- [Hệ thống chữ viết tiếng Việt & Phương pháp gõ](docs/vietnamese-language-system.md) — Cơ sở ngôn ngữ học
-
----
-
-## ⭐ Star History
-
-[![Star History Chart](https://star-history.dera.page/svg?repos=khaphanspace/gonhanh.org&type=Timeline&legend=bottom-right)](https://star-history.dera.page/#khaphanspace/gonhanh.org&type=Timeline&legend=bottom-right)
-
----
-
-## 📄 License
-
-Copyright © 2025 Gõ Nhanh Contributors. [BSD-3-Clause](LICENSE).
+- **Tác giả & Duy trì**: Ron Ng ([@ronnhd](https://github.com/ronnhd))
+- **Kế thừa nền tảng**: Bộ gõ phát triển dựa trên mã nguồn mở của [GoNhanh](https://github.com/khaphanspace/gonhanh.org) của tác giả Kha Phan.
+- **Giấy phép**: Phát hành theo giấy phép [BSD-3-Clause](LICENSE).

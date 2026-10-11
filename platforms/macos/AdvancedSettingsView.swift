@@ -81,7 +81,7 @@ struct AdvancedSettingsView: View {
             SettingsRow {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Tuỳ chỉnh theo ứng dụng").font(.system(size: 13, weight: .medium))
-                    Text("Tuỳ chỉnh cách Gõ Nhanh hoạt động cho từng ứng dụng")
+                    Text("Tuỳ chỉnh cách TuiGoAI hoạt động cho từng ứng dụng")
                         .font(.system(size: 11))
                         .foregroundColor(Color(NSColor.secondaryLabelColor))
                 }
@@ -192,7 +192,7 @@ struct PerAppProfileRow: View {
 
             // GN · Inject
             HStack(spacing: 8) {
-                profilePicker("Bật Gõ Nhanh", selection: enabledBinding, width: 80) {
+                profilePicker("Bật TuiGoAI", selection: enabledBinding, width: 80) {
                     Text("Tự động").tag(0)
                     Text("Bật").tag(1)
                     Text("Tắt").tag(-1)

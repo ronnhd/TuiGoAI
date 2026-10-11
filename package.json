@@ -1,8 +1,13 @@
 {
-  "name": "gonhanh",
+  "name": "tuigoai",
   "version": "1.0.0",
-  "description": "Gõ Nhanh - High-performance Vietnamese input method engine",
-  "author": "Kha Phan <nhatkha1407@gmail.com>",
+  "description": "TuiGoAI - Bo go tieng Viet hien dai tich hop AI Copilot cho macOS",
+  "author": "Ron Ng <duy.ron.ng@gmail.com>",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ronnhd/TuiGoAI.git"
+  },
   "scripts": {
     "semantic-release": "semantic-release"
   },

@@ -866,16 +866,16 @@ enum SecureInputPresentation {
     /// user knows which app to leave or quit; falls back to generic guidance otherwise.
     static func warningMessage(holderName: String?) -> String {
         if let name = holderName {
-            return "\(name) đang giữ macOS Secure Input. Rời ô mật khẩu hoặc thoát ứng dụng đó; Gõ Nhanh sẽ tự hoạt động lại."
+            return "\(name) đang giữ macOS Secure Input. Rời ô mật khẩu hoặc thoát ứng dụng đó; TuiGoAI sẽ tự hoạt động lại."
         }
-        return "macOS Secure Input đang chặn bộ gõ. Rời ô mật khẩu hoặc ứng dụng đang giữ Secure Input; Gõ Nhanh sẽ tự hoạt động lại."
+        return "macOS Secure Input đang chặn bộ gõ. Rời ô mật khẩu hoặc ứng dụng đang giữ Secure Input; TuiGoAI sẽ tự hoạt động lại."
     }
 
     static func tooltip(holderName: String?) -> String {
         if let name = holderName {
-            return "Gõ Nhanh đang tạm dừng vì \(name) giữ macOS Secure Input"
+            return "TuiGoAI đang tạm dừng vì \(name) giữ macOS Secure Input"
         }
-        return "Gõ Nhanh đang tạm dừng vì macOS Secure Input"
+        return "TuiGoAI đang tạm dừng vì macOS Secure Input"
     }
 }
 
@@ -1163,7 +1163,7 @@ class KeyboardHookManager {
         DispatchQueue.main.async {
             let alert = NSAlert()
             alert.messageText = "Cần quyền Accessibility"
-            alert.informativeText = "Gõ Nhanh cần quyền Accessibility để gõ tiếng Việt.\n\n1. Mở System Settings > Privacy & Security > Accessibility\n2. Bật Gõ Nhanh\n3. Khởi động lại app"
+            alert.informativeText = "TuiGoAI cần quyền Accessibility để gõ tiếng Việt.\n\n1. Mở System Settings > Privacy & Security > Accessibility\n2. Bật TuiGoAI\n3. Khởi động lại app"
             alert.alertStyle = .warning
             alert.addButton(withTitle: "Mở System Settings")
             alert.addButton(withTitle: "Hủy")

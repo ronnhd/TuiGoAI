@@ -6,36 +6,36 @@ import Foundation
 // All project metadata in one place for consistency
 
 enum AppMetadata {
-    static let name = "Gõ Nhanh"
+    static let name = "TuiGoAI"
 
     /// App Logo - dùng chung cho mọi nơi
     static var logo: NSImage {
         NSImage(named: "AppLogo") ?? NSApp.applicationIconImage ?? NSImage()
     }
 
-    static let displayName = "Gõ Nhanh"
-    static let tagline = "Bộ gõ tiếng Việt hiệu suất cao"
+    static let displayName = "TuiGoAI"
+    static let tagline = "Bộ gõ tiếng Việt tích hợp AI Copilot"
     static let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
     static let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
 
-    // Author
-    static let author = "Kha Phan"
-    static let authorEmail = "nhatkha1407@gmail.com"
+    // Author & Maintainer
+    static let author = "Ron Ng"
+    static let authorEmail = "duy.ron.ng@gmail.com"
 
     // Links
-    static let website = "https://gonhanh.org"
-    static let repository = "https://github.com/khaphanspace/gonhanh.org"
-    static let issuesURL = "https://github.com/khaphanspace/gonhanh.org/issues"
-    static let sponsorURL = "https://github.com/sponsors/khaphanspace"
-    static let authorLinkedin = "https://www.linkedin.com/in/khaphanspace"
-    static let voteURL = "https://unikorn.vn/p/gonhanh?ref=gonhanh"
+    static let website = "https://github.com/ronnhd/TuiGoAI"
+    static let repository = "https://github.com/ronnhd/TuiGoAI"
+    static let issuesURL = "https://github.com/ronnhd/TuiGoAI/issues"
+    static let sponsorURL = ""
+    static let authorLinkedin = "https://linkedin.com/in/ronnhd"
+    static let voteURL = ""
 
     // Legal
-    static let copyright = "Copyright © 2025 \(author). All rights reserved."
-    static let license = "GPL-3.0-or-later"
+    static let copyright = "Copyright © 2026 Ron Ng. Dựa trên GoNhanh (Copyright © 2025 Kha Phan)."
+    static let license = "BSD-3-Clause"
 
     /// Tech
-    static let techStack = "Rust + SwiftUI"
+    static let techStack = "Rust + SwiftUI + Local/Cloud LLM"
 
     /// Credits for About panel
     static var credits: String {
@@ -43,8 +43,9 @@ enum AppMetadata {
         \(tagline)
 
         Tác giả: \(author)
+        Kế thừa nền tảng: GoNhanh (Kha Phan, BSD-3-Clause)
 
-        Made with Rust + SwiftUI
+        Công nghệ: Rust + SwiftUI + AI Copilot
         """
     }
 
@@ -56,11 +57,10 @@ enum AppMetadata {
         \(tagline)
 
         Tác giả: \(author)
-        Website: \(website)
         GitHub: \(repository)
 
         \(copyright)
-        License: \(license)
+        Giấy phép: \(license)
         """
     }
 }

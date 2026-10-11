@@ -13,7 +13,7 @@
     <key>CFBundleName</key>
     <string>$(PRODUCT_NAME)</string>
     <key>CFBundleDisplayName</key>
-    <string>GoNhanh</string>
+    <string>TuiGoAI</string>
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
@@ -25,10 +25,10 @@
     <key>LSUIElement</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2025 Kha Phan. All rights reserved.</string>
+    <string>Copyright © 2026 Ron Ng. Based on GoNhanh (Copyright © 2025 Kha Phan).</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSAppleEventsUsageDescription</key>
-    <string>Gõ Nhanh needs access to send keyboard events for Vietnamese input.</string>
+    <string>TuiGoAI needs access to send keyboard events for Vietnamese input.</string>
 </dict>
 </plist>

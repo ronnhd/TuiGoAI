@@ -1,5 +1,5 @@
 # ============================================================================
-# Gõ Nhanh - Vietnamese Input Method Engine
+# TuiGoAI - Vietnamese Input Method with AI Copilot
 # ============================================================================
 
 .DEFAULT_GOAL := help
@@ -17,7 +17,7 @@ NEXT_MAJOR := $(shell echo $(VER) | awk -F. '{print $$1+1".0.0"}')
 
 .PHONY: help
 help:
-	@echo "⚡ Gõ Nhanh - Vietnamese Input Method Engine"
+	@echo "⚡ TuiGoAI - Vietnamese Input Method with AI Copilot"
 	@echo ""
 	@echo "Usage: make [target]"
 	@echo ""
