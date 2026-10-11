@@ -1370,14 +1370,11 @@ struct AboutPageView: View {
                 Text("Phiên bản v\(AppMetadata.version)").font(.system(size: 12)).foregroundColor(Color(NSColor.tertiaryLabelColor))
             }
             HStack(spacing: 12) {
-                AboutLink(icon: "heart.fill", title: "Ủng hộ", url: AppMetadata.sponsorURL, iconColor: .pink)
+                if !AppMetadata.sponsorURL.isEmpty {
+                    AboutLink(icon: "heart.fill", title: "Ủng hộ", url: AppMetadata.sponsorURL, iconColor: .pink)
+                }
                 AboutLink(icon: "ant", title: "Báo lỗi", url: AppMetadata.issuesURL)
                 AboutLink(icon: "chevron.left.forwardslash.chevron.right", title: "GitHub", url: AppMetadata.repository)
-            }
-            // Launch platform badges
-            HStack(spacing: 8) {
-                PlatformBadge(title: "Unikorn", icon: "star.fill", url: "https://unikorn.vn/p/gonhanh?ref=gonhanh")
-                PlatformBadge(title: "J2TEAM", icon: "bolt.fill", url: "https://launch.j2team.dev/products/go-nhanh?ref=gonhanh")
             }
             Spacer()
             HStack(spacing: 4) {
@@ -1402,20 +1399,22 @@ struct AboutLink: View {
     @State private var hovered = false
 
     var body: some View {
-        Link(destination: URL(string: url)!) {
-            VStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 18))
-                    .foregroundColor(iconColor)
-                Text(title).font(.system(size: 11))
+        if let destination = URL(string: url), !url.isEmpty {
+            Link(destination: destination) {
+                VStack(spacing: 6) {
+                    Image(systemName: icon)
+                        .font(.system(size: 18))
+                        .foregroundColor(iconColor)
+                    Text(title).font(.system(size: 11))
+                }
+                .frame(width: 80, height: 60)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color(NSColor.controlBackgroundColor).opacity(hovered ? 0.8 : 0.5)))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(NSColor.separatorColor).opacity(0.5), lineWidth: 0.5))
             }
-            .frame(width: 80, height: 60)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color(NSColor.controlBackgroundColor).opacity(hovered ? 0.8 : 0.5)))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(NSColor.separatorColor).opacity(0.5), lineWidth: 0.5))
+            .buttonStyle(.plain)
+            .foregroundColor(Color(NSColor.labelColor))
+            .onHover { hovered = $0 }
         }
-        .buttonStyle(.plain)
-        .foregroundColor(Color(NSColor.labelColor))
-        .onHover { hovered = $0 }
     }
 }
 
@@ -1425,10 +1424,15 @@ struct AuthorLink: View {
     @State private var hovered = false
 
     var body: some View {
-        Link(destination: URL(string: url)!) { Text(name).underline(hovered) }
-            .buttonStyle(.plain)
-            .foregroundColor(Color.accentColor)
-            .onHover { hovered = $0 }
+        if let destination = URL(string: url), !url.isEmpty {
+            Link(destination: destination) { Text(name).underline(hovered) }
+                .buttonStyle(.plain)
+                .foregroundColor(Color.accentColor)
+                .onHover { hovered = $0 }
+        } else {
+            Text(name)
+                .foregroundColor(Color.accentColor)
+        }
     }
 }
 
@@ -1440,27 +1444,28 @@ struct PlatformBadge: View {
     @State private var hovered = false
 
     var body: some View {
-        Link(destination: URL(string: url)!) {
-            HStack(spacing: 5) {
-                Image(systemName: icon)
-                    .font(.system(size: 10))
-                Text(title)
-                    .font(.system(size: 10, weight: .medium))
-                Image(systemName: "arrowtriangle.up.fill")
-                    .font(.system(size: 6))
-                    .foregroundStyle(.tertiary)
+        if let destination = URL(string: url), !url.isEmpty {
+            Link(destination: destination) {
+                HStack(spacing: 5) {
+                    Image(systemName: icon)
+                        .font(.system(size: 10))
+                    Text(title)
+                        .font(.system(size: 10, weight: .medium))
+                    Image(systemName: "arrowtriangle.up.fill")
+                        .font(.system(size: 6))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
+                )
+                .opacity(hovered ? 0.7 : 1.0)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
-            )
-            .opacity(hovered ? 0.7 : 1.0)
+            .buttonStyle(.plain)
+            .onHover { hovered = $0 }
         }
-        .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
-        .onHover { hovered = $0 }
     }
 }
 
