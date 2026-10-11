@@ -1,37 +1,37 @@
-# Gõ Nhanh trên Linux
+# TuiGoAI trên Linux
 
-Gõ Nhanh cho Linux là addon Fcitx5 beta, hiện phát hành binary cho **x86_64**.
-Trình cài đặt thêm GoNhanh vào profile hiện có và không xoá Bamboo hoặc input
+TuiGoAI cho Linux là addon Fcitx5 beta, hiện phát hành binary cho **x86_64**.
+Trình cài đặt thêm TuiGoAI vào profile hiện có và không xoá Bamboo hoặc input
 method khác.
 
 ## Cài đặt
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/khaphanspace/gonhanh.org/main/scripts/setup/linux.sh | bash
+curl -fsSL https://raw.githubusercontent.com/ronnhd/TuiGoAI/main/scripts/setup/linux.sh | bash
 ```
 
 Sau khi cài:
 
 1. Đăng xuất rồi đăng nhập lại để desktop nạp Fcitx5.
 2. Chạy `source ~/.profile` để dùng lệnh `gn` ngay trong terminal hiện tại.
-3. Chạy `gn on` để chọn GoNhanh.
+3. Chạy `gn on` để chọn TuiGoAI.
 
 Có thể tải archive thủ công tại
-[`gonhanh-linux.tar.gz`](https://github.com/khaphanspace/gonhanh.org/releases/latest/download/gonhanh-linux.tar.gz),
-giải nén và chạy `gonhanh-linux/install.sh`.
+[`tuigoai-linux.tar.gz`](https://github.com/ronnhd/TuiGoAI/releases/latest/download/tuigoai-linux.tar.gz),
+giải nén và chạy `tuigoai-linux/install.sh`.
 
 ## Sử dụng
 
 | Lệnh | Chức năng |
 |------|-----------|
-| `gn` hoặc `gn toggle` | Bật/tắt riêng GoNhanh |
-| `gn on` | Chọn và bật GoNhanh |
-| `gn off` | Tắt GoNhanh nếu đang được chọn |
-| `gn vni` | Chuyển sang VNI, tải lại Fcitx5 và bật GoNhanh |
-| `gn telex` | Chuyển sang Telex, tải lại Fcitx5 và bật GoNhanh |
-| `gn status` | Xem trạng thái riêng của GoNhanh và input method hiện tại |
+| `gn` hoặc `gn toggle` | Bật/tắt riêng TuiGoAI |
+| `gn on` | Chọn và bật TuiGoAI |
+| `gn off` | Tắt TuiGoAI nếu đang được chọn |
+| `gn vni` | Chuyển sang VNI, tải lại Fcitx5 và bật TuiGoAI |
+| `gn telex` | Chuyển sang Telex, tải lại Fcitx5 và bật TuiGoAI |
+| `gn status` | Xem trạng thái riêng của TuiGoAI và input method hiện tại |
 | `gn update` | Cài bản Linux mới nhất |
-| `gn uninstall` | Gỡ GoNhanh, giữ nguyên input method khác |
+| `gn uninstall` | Gỡ TuiGoAI, giữ nguyên input method khác |
 | `gn version` | Xem phiên bản |
 | `gn help` | Hiển thị trợ giúp |
 
@@ -44,8 +44,8 @@ thực tế phụ thuộc desktop.
 gn uninstall
 ```
 
-Trình gỡ cài đặt chỉ xoá file và profile item của GoNhanh. Bản sao profile trước
-lần chỉnh đầu tiên được giữ tại `~/.config/fcitx5/profile.gonhanh.bak`.
+Trình gỡ cài đặt chỉ xoá file và profile item của TuiGoAI. Bản sao profile trước
+lần chỉnh đầu tiên được giữ tại `~/.config/fcitx5/profile.tuigoai.bak`.
 
 ## Xử lý sự cố
 
@@ -57,7 +57,7 @@ source ~/.profile
 
 Hoặc mở terminal mới sau khi đăng nhập lại.
 
-### GoNhanh chưa xuất hiện
+### TuiGoAI chưa xuất hiện
 
 ```bash
 fcitx5 -r
@@ -67,14 +67,14 @@ fcitx5-configtool
 Kiểm tra các file:
 
 ```bash
-ls ~/.local/lib/fcitx5/gonhanh.so
-ls ~/.local/share/fcitx5/inputmethod/gonhanh.conf
+ls ~/.local/lib/fcitx5/tuigoai.so
+ls ~/.local/share/fcitx5/inputmethod/tuigoai.conf
 ```
 
 ### Addon không tải được
 
 ```bash
-ldd ~/.local/lib/fcitx5/gonhanh.so
+ldd ~/.local/lib/fcitx5/tuigoai.so
 fcitx5 --verbose=*:4
 ```
 

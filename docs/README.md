@@ -1,6 +1,6 @@
-# Gõ Nhanh Documentation
+# TuiGoAI Documentation
 
-Welcome to the Gõ Nhanh Vietnamese Input Method Engine documentation. This folder contains comprehensive guides for understanding, developing, and contributing to the project.
+Welcome to the TuiGoAI (Vietnamese Input Method with AI Copilot) documentation. This folder contains comprehensive guides for understanding, developing, and contributing to the project.
 
 ## Quick Navigation
 
@@ -166,9 +166,9 @@ Always include documentation updates in the same PR as code changes.
 
 ## Contact & Support
 
-- **Issues**: https://github.com/khaphanspace/gonhanh.org/issues
-- **Discussions**: https://github.com/khaphanspace/gonhanh.org/discussions
-- **License**: GPL-3.0-or-later
+- **Issues**: https://github.com/ronnhd/TuiGoAI/issues
+- **Discussions**: https://github.com/ronnhd/TuiGoAI/issues
+- **License**: BSD-3-Clause
 
 ## Statistics
 
@@ -187,7 +187,7 @@ Always include documentation updates in the same PR as code changes.
 
 ---
 
-**Last Updated**: 2025-12-10
+**Last Updated**: 2026-10-11
 **Status**: Production-ready for team development
-**Platforms**: macOS (v1.0.21+), Windows (production), Linux (planned)
-**Repository**: https://github.com/khaphanspace/gonhanh.org
+**Platforms**: macOS (v1.0.0+), Windows (beta), Linux (beta)
+**Repository**: https://github.com/ronnhd/TuiGoAI

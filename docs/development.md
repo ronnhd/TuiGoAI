@@ -1,6 +1,6 @@
 # Development Guide
 
-Complete guide for building, testing, and contributing to GoNhanh.
+Complete guide for building, testing, and contributing to TuiGoAI.
 
 ## Prerequisites
 
@@ -15,8 +15,8 @@ Complete guide for building, testing, and contributing to GoNhanh.
 
 ```bash
 # Clone repository
-git clone https://github.com/khaphanspace/gonhanh.org
-cd gonhanh.org
+git clone https://github.com/ronnhd/TuiGoAI
+cd TuiGoAI
 
 # Setup development environment (installs Rust targets)
 make setup
@@ -33,7 +33,7 @@ make build
 Complete directory layout with file purposes:
 
 ```
-gonhanh.org/
+TuiGoAI/
 │
 ├── Makefile                      # Build orchestration
 ├── CLAUDE.md                     # AI assistant guidelines
@@ -77,8 +77,8 @@ gonhanh.org/
 │   │   ├── SettingsView.swift  # Settings UI (102 lines)
 │   │   ├── RustBridge.swift    # FFI bridge (443 lines)
 │   │   ├── Info.plist          # App info
-│   │   ├── GoNhanh.entitlements# App entitlements
-│   │   └── GoNhanh.xcodeproj/  # Xcode project
+│   │   ├── TuiGoAI.entitlements# App entitlements
+│   │   └── TuiGoAI.xcodeproj/  # Xcode project
 │   │       ├── project.pbxproj # Build configuration
 │   │       └── xcshareddata/   # Shared settings
 │   └── windows/
@@ -130,11 +130,11 @@ Runs: `cd core && cargo test --release`
 
 ```bash
 make core        # Build Rust core library only
-                 # Output: platforms/macos/libgonhanh_core.a (universal: arm64+x86_64)
+                 # Output: platforms/macos/libtuigoai_core.a (universal: arm64+x86_64)
 
 make macos       # Build macOS SwiftUI app only
-                 # Requires libgonhanh_core.a to exist
-                 # Output: platforms/macos/build/Release/GoNhanh.app
+                 # Requires libtuigoai_core.a to exist
+                 # Output: platforms/macos/build/Release/TuiGoAI.app
 
 make build       # Full build: test → core → macos
                  # Sequential: ensures tests pass before building app
@@ -160,8 +160,8 @@ make install     # Copy app to /Applications
 
 ```bash
 # First-time setup
-git clone https://github.com/khaphanspace/gonhanh.org
-cd gonhanh.org
+git clone https://github.com/ronnhd/TuiGoAI
+cd TuiGoAI
 make setup       # Installs rust targets (aarch64 + x86_64)
 make test        # Verify setup (runs cargo test)
 ```
@@ -194,10 +194,10 @@ vim platforms/macos/SettingsView.swift
 make macos
 
 # Run app from command line
-open platforms/macos/build/Release/GoNhanh.app
+open platforms/macos/build/Release/TuiGoAI.app
 
 # Or open in Xcode
-open platforms/macos/GoNhanh.xcodeproj
+open platforms/macos/TuiGoAI.xcodeproj
 ```
 
 ### 3. Code Quality
@@ -293,10 +293,10 @@ mod tests {
 make core
 
 # Output location
-ls -la platforms/macos/libgonhanh_core.a
+ls -la platforms/macos/libtuigoai_core.a
 
 # Verify it's universal (arm64 + x86_64)
-lipo -info platforms/macos/libgonhanh_core.a
+lipo -info platforms/macos/libtuigoai_core.a
 # Output: Architectures in the fat file are: x86_64 arm64
 ```
 
@@ -307,10 +307,10 @@ lipo -info platforms/macos/libgonhanh_core.a
 make macos
 
 # Output location
-ls -la platforms/macos/build/Release/GoNhanh.app
+ls -la platforms/macos/build/Release/TuiGoAI.app
 
 # Get app size
-du -sh platforms/macos/build/Release/GoNhanh.app
+du -sh platforms/macos/build/Release/TuiGoAI.app
 # ~3-5 MB for the app bundle
 ```
 
@@ -332,10 +332,10 @@ Run these commands on Linux with the dependencies listed in
 ```bash
 ./platforms/linux/scripts/build.sh
 ./platforms/linux/scripts/test.sh
-bash platforms/linux/scripts/package.sh dev ./gonhanh-linux.tar.gz
+bash platforms/linux/scripts/package.sh dev ./tuigoai-linux.tar.gz
 ```
 
-The package script verifies the canonical `gonhanh-linux/` archive layout used
+The package script verifies the canonical `tuigoai-linux/` archive layout used
 by the public installer and release workflows.
 
 ## Debugging
@@ -364,9 +364,9 @@ lldb -- cargo test -p core
 make macos
 
 # 2. Run it
-open platforms/macos/build/Release/GoNhanh.app
+open platforms/macos/build/Release/TuiGoAI.app
 
-# 3. Open Console.app and filter by "GoNhanh"
+# 3. Open Console.app and filter by "TuiGoAI"
 # Look for debug messages, errors
 ```
 
@@ -374,7 +374,7 @@ open platforms/macos/build/Release/GoNhanh.app
 
 ```bash
 # 1. Open project in Xcode
-open platforms/macos/GoNhanh.xcodeproj
+open platforms/macos/TuiGoAI.xcodeproj
 
 # 2. Edit scheme to use Release build
 # (Xcode menu → Product → Scheme → Edit Scheme)
@@ -390,7 +390,7 @@ open platforms/macos/GoNhanh.xcodeproj
 
 ```bash
 # Watch keyboard events with system profiler
-log stream --predicate 'eventMessage contains "GoNhanh"'
+log stream --predicate 'eventMessage contains "TuiGoAI"'
 ```
 
 ### Common Debugging Tasks
@@ -414,8 +414,8 @@ tccutil reset Accessibility
 make core
 
 # Verify file exists and is readable
-ls -la platforms/macos/libgonhanh_core.a
-file platforms/macos/libgonhanh_core.a
+ls -la platforms/macos/libtuigoai_core.a
+file platforms/macos/libtuigoai_core.a
 ```
 
 **"Test failures after Rust update"**
@@ -487,7 +487,7 @@ chore: update dependencies
 
 | Problem                                        | Solution                                                   |
 | ---------------------------------------------- | ---------------------------------------------------------- |
-| "No such file or directory: libgonhanh_core.a" | Run `make core` first                                      |
+| "No such file or directory: libtuigoai_core.a" | Run `make core` first                                      |
 | "Failed to find Xcode"                         | Install Xcode from App Store, run `xcode-select --install` |
 | "Rust target not found"                        | Run `make setup` to install targets                        |
 | "Permission denied" on scripts                 | Run `chmod +x scripts/**/*.sh`                             |
@@ -529,7 +529,7 @@ time cargo test -p core
 # 1. Open Xcode
 # 2. Xcode → Open Developer Tool → Instruments
 # 3. Select "Time Profiler"
-# 4. Attach to GoNhanh process
+# 4. Attach to TuiGoAI process
 # 5. Record and analyze
 ```
 
@@ -585,7 +585,7 @@ make install        # Install to /Applications
 # Debugging
 cargo test -- --nocapture
 RUST_LOG=debug cargo test
-open platforms/macos/build/Release/GoNhanh.app
+open platforms/macos/build/Release/TuiGoAI.app
 
 # Code quality
 cargo fmt

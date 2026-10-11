@@ -1,8 +1,8 @@
 <div align="center">
 
-# 🌟 Cộng đồng Gõ Nhanh
+# 🌟 Cộng đồng TuiGoAI
 
-**Gõ Nhanh được xây dựng bởi cộng đồng, cho cộng đồng.**
+**TuiGoAI được xây dựng bởi cộng đồng, cho cộng đồng.**
 
 Mỗi đóng góp, dù lớn hay nhỏ, đều giúp người Việt gõ tiếng Việt tốt hơn mỗi ngày.
 
@@ -1346,7 +1346,7 @@ Những người đã báo lỗi, góp ý, và thảo luận giúp định hình
 ### Bạn muốn đóng góp?
 
 <a href="/CONTRIBUTING.md">📖 Hướng dẫn đóng góp</a> ·
-<a href="https://github.com/khaphanspace/gonhanh.org/issues">🐛 Báo lỗi</a> ·
+<a href="https://github.com/ronnhd/TuiGoAI/issues">🐛 Báo lỗi</a> ·
 <a href="https://github.com/sponsors/khaphanspace">💖 Sponsor</a>
 
 ---

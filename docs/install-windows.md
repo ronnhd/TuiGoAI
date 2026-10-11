@@ -1,4 +1,4 @@
-# Gõ Nhanh trên Windows
+# TuiGoAI trên Windows
 
 > **Coming Soon** - Đang phát triển
 
@@ -36,8 +36,8 @@
 
 ## Theo dõi
 
-- [Releases](https://github.com/khaphanspace/gonhanh.org/releases)
-- [GitHub Issues](https://github.com/khaphanspace/gonhanh.org/issues)
+- [Releases](https://github.com/ronnhd/TuiGoAI/releases)
+- [GitHub Issues](https://github.com/ronnhd/TuiGoAI/issues)
 
 ---
 
@@ -52,8 +52,8 @@
 - [Visual Studio 2022](https://visualstudio.microsoft.com/) (C++ & .NET workload)
 
 ```powershell
-git clone https://github.com/khaphanspace/gonhanh.org.git
-cd gonhanh.org/platforms/windows
+git clone https://github.com/ronnhd/TuiGoAI.git
+cd TuiGoAI/platforms/windows
 cargo build --release
 ```
 </details>

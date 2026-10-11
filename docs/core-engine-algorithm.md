@@ -1,4 +1,4 @@
-# GoNhanh Core Typing Engine
+# TuiGoAI Core Typing Engine
 
 > Tài liệu thuật toán cho engine gõ tiếng Việt.
 
@@ -712,4 +712,4 @@ Final: "Claus" (không bị biến đổi) ✓
 
 ---
 
-*Tài liệu thuật toán GoNhanh Core Engine*
+*Tài liệu thuật toán TuiGoAI Core Engine*

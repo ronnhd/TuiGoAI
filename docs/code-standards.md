@@ -1,4 +1,4 @@
-# Gõ Nhanh: Code Standards & Guidelines
+# TuiGoAI: Code Standards & Guidelines
 
 ## Rust Coding Standards
 
@@ -124,10 +124,10 @@ extension MyClass: SomeProtocol { }
 ### Accessibility & Permissions
 - **Accessibility Permission**: Required for CGEventTap (keyboard hook)
 - **User Prompt**: Show alert if permission denied on first run
-- **Debug Mode**: Check `/tmp/gonhanh_debug.log` for detailed logs
+- **Debug Mode**: Check `/tmp/tuigoai_debug.log` for detailed logs
   ```swift
   func debugLog(_ message: String) {
-      let logPath = "/tmp/gonhanh_debug.log"
+      let logPath = "/tmp/tuigoai_debug.log"
       guard FileManager.default.fileExists(atPath: logPath) else { return }
       // ... write to file
   }
