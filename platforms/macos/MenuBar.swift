@@ -76,6 +76,13 @@ class MenuBarController: NSObject, NSWindowDelegate {
             object: nil
         )
 
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(retryEngineIfNeeded),
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil
+        )
+
         // Observe AppState changes via Combine
         appState.$isEnabled
             .combineLatest(appState.$currentMethod)
@@ -394,6 +401,11 @@ class MenuBarController: NSObject, NSWindowDelegate {
 
     @objc private func handleShortcutChanged() {
         updateMenu()
+    }
+
+    @objc private func retryEngineIfNeeded() {
+        guard AXIsProcessTrusted(), !KeyboardHookManager.shared.isRunning else { return }
+        startEngine()
     }
 
     @objc private func onboardingDidComplete() {

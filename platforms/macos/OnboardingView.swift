@@ -60,6 +60,7 @@ struct OnboardingView: View {
             Spacer()
             if step == 1 {
                 Button("Quay lại") { step = 0 }
+                Button("Bỏ qua") { skip() }
             }
             primaryButton
         }
@@ -81,6 +82,13 @@ struct OnboardingView: View {
 
     private func openSettings() {
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+    }
+
+    private func skip() {
+        UserDefaults.standard.set(true, forKey: SettingsKey.hasCompletedOnboarding)
+        UserDefaults.standard.set(selectedMode.rawValue, forKey: SettingsKey.method)
+        NotificationCenter.default.post(name: .onboardingCompleted, object: nil)
+        NSApp.keyWindow?.close()
     }
 
     private func restart() {
