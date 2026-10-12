@@ -294,7 +294,9 @@ public final class GhostTextManager: ObservableObject {
             }
         }
 
-        guard let caretRect, !caretRect.isEmpty else { return nil }
+        // Some Electron/WebKit text fields expose text and selection but do not
+        // implement kAXBoundsForRangeParameterizedAttribute. Keep the context
+        // usable; the overlay will fall back to the current mouse position.
         return CaretContext(prefixText: prefixText, suffixText: suffixText, caretRect: caretRect, isSecure: false)
     }
 }
