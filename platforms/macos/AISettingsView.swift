@@ -4,9 +4,10 @@ struct AISettingsView: View {
     @StateObject private var ollama = OllamaService.shared
     @State private var config = AIService.shared.loadConfig()
     @State private var acceptShortcut = AISettingsView.loadShortcut()
-    @State private var toggleShortcut = AISettingsView.loadShortcut(key: "tuigoai.ai.shortcut.toggle")
+    @State private var toggleShortcut = AISettingsView.loadShortcut(key: GhostTextManager.toggleShortcutKey)
     @State private var recordingAccept = false
     @State private var recordingToggle = false
+    @State private var modelToDelete: OllamaModelInfo?
 
     var body: some View {
         ScrollView {
@@ -25,10 +26,25 @@ struct AISettingsView: View {
             config.providerType = .localOllama
             Task { await ollama.refresh() }
         }
-        .onChange(of: config.isEnabled) { _ in saveConfig() }
+        .onChange(of: config.isEnabled) { newValue in
+            saveConfig()
+            if !newValue { GhostTextManager.shared.dismiss() }
+        }
         .onChange(of: config.model) { _ in saveConfig() }
         .onChange(of: acceptShortcut) { _ in saveShortcut(acceptShortcut, key: GhostTextManager.acceptShortcutKey) }
-        .onChange(of: toggleShortcut) { _ in saveShortcut(toggleShortcut, key: "tuigoai.ai.shortcut.toggle") }
+        .onChange(of: toggleShortcut) { _ in saveShortcut(toggleShortcut, key: GhostTextManager.toggleShortcutKey) }
+        .alert("Xóa model Ollama?", isPresented: Binding(
+            get: { modelToDelete != nil },
+            set: { if !$0 { modelToDelete = nil } }
+        ), presenting: modelToDelete) { model in
+            Button("Xóa", role: .destructive) {
+                Task { await ollama.delete(model: model.name) }
+                modelToDelete = nil
+            }
+            Button("Hủy", role: .cancel) { modelToDelete = nil }
+        } message: { model in
+            Text("Model \(model.name) sẽ bị xóa khỏi Ollama trên máy này.")
+        }
     }
 
     private var header: some View {
@@ -91,13 +107,18 @@ struct AISettingsView: View {
             ForEach(ollama.recommendations) { recommendation in
                 modelRow(recommendation)
             }
-            if !ollama.models.isEmpty {
+            if !ollama.selectableModels.isEmpty {
                 Text("Model đã cài")
                     .font(.system(size: 13, weight: .medium))
                     .padding(.top, 6)
-                ForEach(ollama.models) { model in
+                ForEach(ollama.selectableModels) { model in
                     installedModelRow(model)
                 }
+            }
+            if ollama.models.contains(where: { !$0.isGenerative }) {
+                Text("Model embedding chỉ dùng để tìm kiếm, không dùng được cho autocomplete.")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(NSColor.secondaryLabelColor))
             }
         }
     }
@@ -156,7 +177,7 @@ struct AISettingsView: View {
             .buttonStyle(.bordered)
             .disabled(config.model == model.name)
             Button(role: .destructive) {
-                Task { await ollama.delete(model: model.name) }
+                modelToDelete = model
             } label: {
                 Image(systemName: "trash")
             }
@@ -207,7 +228,12 @@ struct AISettingsView: View {
     private static func loadShortcut(key: String = GhostTextManager.acceptShortcutKey) -> KeyboardShortcut {
         guard let data = UserDefaults.standard.data(forKey: key),
               let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
-        else { return KeyboardShortcut(keyCode: 0x30, modifiers: 0) }
+        else {
+            if key == GhostTextManager.toggleShortcutKey {
+                return KeyboardShortcut(keyCode: 0x31, modifiers: CGEventFlags.maskControl.union(.maskAlternate).rawValue)
+            }
+            return KeyboardShortcut(keyCode: 0x30, modifiers: 0)
+        }
         return shortcut
     }
 

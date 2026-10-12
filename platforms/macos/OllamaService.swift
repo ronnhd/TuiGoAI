@@ -4,8 +4,10 @@ public struct OllamaModelInfo: Codable, Identifiable, Sendable {
     public let name: String
     public let size: Int64?
     public let modifiedAt: String?
+    public let capabilities: [String]
 
     public var id: String { name }
+    public var isGenerative: Bool { capabilities.contains("completion") || capabilities.contains("chat") }
     public var sizeDescription: String {
         guard let size, size > 0 else { return "Chưa rõ dung lượng" }
         let gigabytes = Double(size) / 1_000_000_000
@@ -41,6 +43,9 @@ public final class OllamaService: ObservableObject {
     @Published public private(set) var downloadProgress: Double?
     @Published public private(set) var errorMessage: String?
 
+    public var selectableModels: [OllamaModelInfo] { models.filter(\.isGenerative) }
+    public var installedGenerativeModels: [OllamaModelInfo] { selectableModels }
+
     public let recommendations: [OllamaModelRecommendation] = [
         OllamaModelRecommendation(
             model: "qwen2.5:1.5b",
@@ -70,6 +75,30 @@ public final class OllamaService: ObservableObject {
 
     private init() {}
 
+    static func resolveCapabilities(for models: [OllamaModelInfo], baseURL: URL) async -> [OllamaModelInfo] {
+        await withTaskGroup(of: OllamaModelInfo.self) { group in
+            for model in models {
+                group.addTask {
+                    if !model.capabilities.isEmpty { return model }
+                    guard let url = URL(string: "api/show", relativeTo: baseURL)?.absoluteURL else { return model }
+                    var request = URLRequest(url: url)
+                    request.httpMethod = "POST"
+                    request.timeoutInterval = 3
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    request.httpBody = try? JSONEncoder().encode(["name": model.name])
+                    guard let (data, response) = try? await URLSession.shared.data(for: request),
+                          (response as? HTTPURLResponse)?.statusCode == 200,
+                          let details = try? JSONDecoder().decode(ShowResponse.self, from: data)
+                    else { return model }
+                    return OllamaModelInfo(name: model.name, size: model.size, modifiedAt: model.modifiedAt, capabilities: details.capabilities ?? [])
+                }
+            }
+            var resolved: [OllamaModelInfo] = []
+            for await model in group { resolved.append(model) }
+            return resolved
+        }
+    }
+
     public func refresh() async {
         errorMessage = nil
         do {
@@ -80,9 +109,11 @@ public final class OllamaService: ObservableObject {
                 throw OllamaError.unreachable
             }
             let payload = try JSONDecoder().decode(TagsResponse.self, from: data)
-            models = payload.models.map {
-                OllamaModelInfo(name: $0.name, size: $0.size, modifiedAt: $0.modifiedAt)
-            }.sorted { $0.name < $1.name }
+            let listedModels = payload.models.map {
+                OllamaModelInfo(name: $0.name, size: $0.size, modifiedAt: $0.modifiedAt, capabilities: $0.capabilities ?? [])
+            }
+            models = await Self.resolveCapabilities(for: listedModels, baseURL: baseURL)
+                .sorted { $0.name < $1.name }
             isReachable = true
         } catch {
             isReachable = false
@@ -150,6 +181,10 @@ public final class OllamaService: ObservableObject {
         models.contains { $0.name == name }
     }
 
+    private struct ShowResponse: Decodable {
+        let capabilities: [String]?
+    }
+
     private struct TagsResponse: Decodable {
         let models: [TagModel]
     }
@@ -158,8 +193,9 @@ public final class OllamaService: ObservableObject {
         let name: String
         let size: Int64?
         let modifiedAt: String?
+        let capabilities: [String]?
         enum CodingKeys: String, CodingKey {
-            case name, size
+            case name, size, capabilities
             case modifiedAt = "modified_at"
         }
     }

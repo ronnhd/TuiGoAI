@@ -435,7 +435,7 @@ class MenuBarController: NSObject, NSWindowDelegate {
             window.title = "\(AppMetadata.name) - Cài đặt"
             window.styleMask = NSWindow.StyleMask([.titled, .closable, .miniaturizable, .fullSizeContentView])
             window.standardWindowButton(.zoomButton)?.isHidden = true
-            window.setContentSize(NSSize(width: 700, height: 480))
+            window.setContentSize(NSSize(width: 820, height: 700))
             window.center()
             window.isReleasedWhenClosed = false
             window.titlebarAppearsTransparent = true

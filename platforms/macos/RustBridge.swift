@@ -1551,6 +1551,16 @@ private func keyboardCallback(
         return nil
     }
 
+    if GhostTextManager.matchesToggleShortcutFromHook(keyCode: keyCode, flags: flags) {
+        DispatchQueue.main.async {
+            let enabled = AIService.shared.loadConfig().isEnabled
+            AIService.shared.setAIEnabled(!enabled)
+            if enabled { GhostTextManager.shared.dismiss() }
+        }
+        return nil
+    }
+
+    GhostTextManager.invalidateSuggestionFromHook()
     Task { @MainActor in
         GhostTextManager.shared.handleKeystroke(keyCode: keyCode, isKeyDown: true)
     }

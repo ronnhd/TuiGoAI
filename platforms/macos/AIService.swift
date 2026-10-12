@@ -69,7 +69,7 @@ public struct AIConfig: Codable, Sendable {
         providerType: .localOllama,
         baseURL: AIProviderType.localOllama.defaultBaseURL,
         apiKey: "",
-        model: AIProviderType.localOllama.defaultModel,
+        model: "qwen2.5:3b",
         temperature: 0.3,
         timeoutInterval: 15.0
     )
@@ -148,15 +148,25 @@ public final class AIService: @unchecked Sendable {
 
     public func loadConfig() -> AIConfig {
         guard let data = UserDefaults.standard.data(forKey: configKey),
-              let config = try? JSONDecoder().decode(AIConfig.self, from: data)
+              var config = try? JSONDecoder().decode(AIConfig.self, from: data)
         else {
             return .default
+        }
+        config.providerType = .localOllama
+        config.baseURL = AIProviderType.localOllama.defaultBaseURL
+        config.apiKey = ""
+        if config.model == "qwen2.5:latest" || config.model.isEmpty {
+            config.model = "qwen2.5:3b"
         }
         return config
     }
 
     public func saveConfig(_ config: AIConfig) {
-        if let data = try? JSONEncoder().encode(config) {
+        var localConfig = config
+        localConfig.providerType = .localOllama
+        localConfig.baseURL = AIProviderType.localOllama.defaultBaseURL
+        localConfig.apiKey = ""
+        if let data = try? JSONEncoder().encode(localConfig) {
             UserDefaults.standard.set(data, forKey: configKey)
         }
     }
@@ -340,16 +350,115 @@ public final class AIService: @unchecked Sendable {
 
     // MARK: - Foundation Feature: Ghost Text Autocomplete
 
-    public func suggestCompletion(prefixText: String) async throws -> String {
-        let systemPrompt = "Bạn là mô hình autocomplete câu tiếng Việt tức thì của bộ gõ TuiGoAI. Nhiệm vụ: gợi ý phần tiếp theo rất ngắn gọn (từ 3 đến 8 từ) nối tiếp tự nhiên câu người dùng đang viết dở."
-        let userPrompt = """
-        Dựa vào đoạn văn bản đang viết dở sau đây, hãy viết tiếp một đoạn rất ngắn (3-8 từ) nối tiếp mạch văn:
-        \"\"\"
-        \(prefixText)
-        \"\"\"
+    public func suggestCompletion(prefixText: String, suffixText: String = "") async throws -> String {
+        let config = loadConfig()
+        guard config.isEnabled else { throw AIError.serviceDisabled }
+        let model = config.model.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !model.isEmpty else { throw AIError.noResponse }
 
-        Chỉ trả về đúng phần viết tiếp, không lặp lại đoạn gốc, không thêm dấu ngoặc kép hay giải thích.
-        """
-        return try await complete(systemPrompt: systemPrompt, userPrompt: userPrompt)
+        let endpoint = URL(string: "http://localhost:11434/api/chat")!
+        let payload = OllamaChatRequest(
+            model: model,
+            messages: [
+                OllamaChatRequest.Message(role: "system", content: """
+                Bạn là hệ thống gợi ý phần tiếp theo inline cho người đang nhập liệu. Chỉ viết nối tiếp vị trí con trỏ, thường 2–6 từ, tối đa 32 token. Bắt buộc giữ nguyên ngôn ngữ và giọng văn trong `text_before_cursor`, kể cả khi văn bản pha Việt-Anh. Không nhắc lại bất kỳ phần nào của văn bản đầu vào. Không dịch sang ngôn ngữ khác. Không chèn tên, số liệu, giá, ngày tháng hay cam kết mới. Nếu `text_after_cursor` đã có từ/cụm kế tiếp thì không gợi ý trùng. Chỉ trả về phần text được nối tiếp, không giải thích, không markdown, không dấu ngoặc kép.
+                """),
+                OllamaChatRequest.Message(role: "user", content: """
+                Văn bản ngay trước con trỏ:
+                <text_before_cursor>
+                \(String(prefixText.suffix(1200)))
+                </text_before_cursor>
+
+                Văn bản ngay sau con trỏ:
+                <text_after_cursor>
+                \(String(suffixText.prefix(240)))
+                </text_after_cursor>
+                """)
+            ],
+            stream: false,
+            think: false,
+            options: OllamaChatRequest.Options(temperature: 0.15, numPredict: 32, numCtx: 2048),
+            keepAlive: "5m"
+        )
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = min(max(config.timeoutInterval, 10), 60)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(payload)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await urlSession.data(for: request)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw AIError.networkError(error.localizedDescription)
+        }
+        guard let http = response as? HTTPURLResponse else { throw AIError.noResponse }
+        guard (200 ... 299).contains(http.statusCode) else {
+            throw AIError.httpError(statusCode: http.statusCode, message: String(data: data, encoding: .utf8) ?? "Ollama error")
+        }
+        let result = try JSONDecoder().decode(OllamaChatResponse.self, from: data)
+        guard let raw = result.message?.content else { throw AIError.noResponse }
+        let cleaned = Self.cleanCompletion(raw, prefix: prefixText, suffix: suffixText)
+        guard !cleaned.isEmpty else { throw AIError.noResponse }
+        return cleaned
+    }
+
+    static func cleanCompletion(_ raw: String, prefix: String, suffix: String) -> String {
+        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        text = text.replacingOccurrences(of: "^```[^\\n]*\\n|\\n```$", with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\\\"'`")))
+        guard !text.isEmpty else { return "" }
+        if !prefix.isEmpty && text.hasPrefix(prefix) {
+            text = String(text.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        guard !text.isEmpty else { return "" }
+        // Fail closed on an echoed tail or a response that has copied the entire prompt.
+        let prefixTail = String(prefix.suffix(32)).trimmingCharacters(in: .whitespacesAndNewlines)
+        if !prefixTail.isEmpty && text.localizedCaseInsensitiveContains(prefixTail) { return "" }
+        if !suffix.isEmpty {
+            let firstSuffix = suffix.split(whereSeparator: \.isWhitespace).prefix(4).joined(separator: " ")
+            if firstSuffix.count >= 3 && text.localizedCaseInsensitiveContains(firstSuffix) { return "" }
+        }
+        let firstLine = text.components(separatedBy: .newlines).first ?? ""
+        var words = firstLine.split(whereSeparator: \.isWhitespace).map(String.init)
+        guard !words.isEmpty else { return "" }
+
+        // Models sometimes repeat the word immediately before the cursor or loop one token.
+        if let lastPrefixWord = prefix.split(whereSeparator: \.isWhitespace).last,
+           words.first?.trimmingCharacters(in: .punctuationCharacters).localizedCaseInsensitiveCompare(String(lastPrefixWord).trimmingCharacters(in: .punctuationCharacters)) == .orderedSame {
+            words.removeFirst()
+        }
+        var deduplicated: [String] = []
+        for word in words {
+            if deduplicated.last?.trimmingCharacters(in: .punctuationCharacters).localizedCaseInsensitiveCompare(word.trimmingCharacters(in: .punctuationCharacters)) == .orderedSame {
+                continue
+            }
+            deduplicated.append(word)
+        }
+        return deduplicated.prefix(8).joined(separator: " ")
+    }
+
+    private struct OllamaChatRequest: Encodable {
+        struct Message: Encodable { let role: String; let content: String }
+        struct Options: Encodable {
+            let temperature: Double
+            let numPredict: Int
+            let numCtx: Int
+            enum CodingKeys: String, CodingKey { case temperature; case numPredict = "num_predict"; case numCtx = "num_ctx" }
+        }
+        let model: String
+        let messages: [Message]
+        let stream: Bool
+        let think: Bool
+        let options: Options
+        let keepAlive: String
+        enum CodingKeys: String, CodingKey { case model, messages, stream, think, options; case keepAlive = "keep_alive" }
+    }
+
+    private struct OllamaChatResponse: Decodable {
+        struct Message: Decodable { let content: String? }
+        let message: Message?
     }
 }

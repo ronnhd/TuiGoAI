@@ -15,6 +15,7 @@ public final class GhostTextManager: ObservableObject {
     private var debounceTask: Task<Void, Never>?
     private var completionTask: Task<Void, Never>?
     private var overlayWindow: GhostTextOverlayWindow?
+    private var contextGeneration: UInt64 = 0
 
     private let axSystemWide = AXUIElementCreateSystemWide()
     nonisolated private static let snapshotLock = NSLock()
@@ -22,6 +23,7 @@ public final class GhostTextManager: ObservableObject {
 
     // Config keys
     nonisolated public static let acceptShortcutKey = "tuigoai.ai.shortcut.accept"
+    nonisolated public static let toggleShortcutKey = "tuigoai.ai.shortcut.toggle"
     nonisolated public static let aiEnabledKey = "tuigoai.ai.enabled"
 
     private init() {
@@ -36,7 +38,9 @@ public final class GhostTextManager: ObservableObject {
 
     /// Called by keyboard hook when a key event occurs
     public func handleKeystroke(keyCode: UInt16, isKeyDown: Bool) {
-        guard AIService.shared.loadConfig().isEnabled else {
+        contextGeneration &+= 1
+        let generation = contextGeneration
+        guard isKeyDown, AIService.shared.loadConfig().isEnabled else {
             dismiss()
             return
         }
@@ -59,13 +63,15 @@ public final class GhostTextManager: ObservableObject {
                 return
             }
             guard !Task.isCancelled else { return }
-            self?.requestSuggestion()
+            guard let self, self.contextGeneration == generation else { return }
+            self.requestSuggestion(generation: generation)
         }
     }
 
     // MARK: - Suggestion Request
 
-    public func requestSuggestion() {
+    public func requestSuggestion(generation: UInt64? = nil) {
+        let generation = generation ?? contextGeneration
         guard AIService.shared.loadConfig().isEnabled else { return }
 
         // Read context around caret via Accessibility
@@ -84,8 +90,11 @@ public final class GhostTextManager: ObservableObject {
         completionTask = Task { [weak self] in
             guard let self = self else { return }
             do {
-                let suggestion = try await AIService.shared.suggestCompletion(prefixText: context.prefixText)
-                guard !Task.isCancelled else { return }
+                let suggestion = try await AIService.shared.suggestCompletion(
+                    prefixText: context.prefixText,
+                    suffixText: context.suffixText
+                )
+                guard !Task.isCancelled, self.contextGeneration == generation else { return }
 
                 let cleanSuggestion = suggestion.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !cleanSuggestion.isEmpty else {
@@ -125,6 +134,12 @@ public final class GhostTextManager: ObservableObject {
         overlayWindow?.hide()
     }
 
+    public nonisolated static func invalidateSuggestionFromHook() {
+        snapshotLock.lock()
+        snapshotSuggestion = ""
+        snapshotLock.unlock()
+    }
+
     public nonisolated static func hasSuggestionSnapshot() -> Bool {
         snapshotLock.lock()
         defer { snapshotLock.unlock() }
@@ -146,6 +161,18 @@ public final class GhostTextManager: ObservableObject {
               shortcut.modifiers == flags.intersection(modifierMask).rawValue
         else { return nil }
         return acceptSuggestion()
+    }
+
+    public nonisolated static func matchesToggleShortcutFromHook(keyCode: UInt16, flags: CGEventFlags) -> Bool {
+        let modifierMask: CGEventFlags = [.maskShift, .maskControl, .maskAlternate, .maskCommand, .maskSecondaryFn]
+        let shortcut: KeyboardShortcut
+        if let data = UserDefaults.standard.data(forKey: toggleShortcutKey),
+           let decoded = try? JSONDecoder().decode(KeyboardShortcut.self, from: data) {
+            shortcut = decoded
+        } else {
+            shortcut = KeyboardShortcut(keyCode: 0x31, modifiers: CGEventFlags.maskControl.union(.maskAlternate).rawValue)
+        }
+        return shortcut.keyCode == keyCode && shortcut.modifiers == flags.intersection(modifierMask).rawValue
     }
 
     public nonisolated static func acceptSuggestionFromHook(keyCode: UInt16, flags: CGEventFlags) -> String? {
@@ -182,6 +209,7 @@ public final class GhostTextManager: ObservableObject {
 
     public struct CaretContext {
         public let prefixText: String
+        public let suffixText: String
         public let caretRect: CGRect?
         public let isSecure: Bool
     }
@@ -192,6 +220,7 @@ public final class GhostTextManager: ObservableObject {
         guard appErr == .success, let focusedApp = focusedAppValue else {
             return nil
         }
+        guard CFGetTypeID(focusedApp) == AXUIElementGetTypeID() else { return nil }
         let focusedAppElement = unsafeBitCast(focusedApp, to: AXUIElement.self)
 
         var focusedElementValue: CFTypeRef?
@@ -199,6 +228,7 @@ public final class GhostTextManager: ObservableObject {
         guard elemErr == .success, let focusedElement = focusedElementValue else {
             return nil
         }
+        guard CFGetTypeID(focusedElement) == AXUIElementGetTypeID() else { return nil }
         let element = unsafeBitCast(focusedElement, to: AXUIElement.self)
 
         // Check if secure field (password)
@@ -209,23 +239,21 @@ public final class GhostTextManager: ObservableObject {
 
         let isSecureRole = (subroleValue as? String) == "AXSecureTextField" || (roleValue as? String) == "AXSecureTextField"
         if isSecureRole {
-            return CaretContext(prefixText: "", caretRect: nil, isSecure: true)
+            return CaretContext(prefixText: "", suffixText: "", caretRect: nil, isSecure: true)
         }
 
         // Get selected text range (or caret location)
         var selectedRangeValue: CFTypeRef?
         let rangeErr = AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &selectedRangeValue)
-        var caretIndex: Int = 0
+        var selectedRange = CFRange(location: 0, length: 0)
+        guard rangeErr == .success, let rangeValue = selectedRangeValue,
+              CFGetTypeID(rangeValue) == AXValueGetTypeID(),
+              AXValueGetType(unsafeBitCast(rangeValue, to: AXValue.self)) == .cfRange,
+              AXValueGetValue(unsafeBitCast(rangeValue, to: AXValue.self), .cfRange, &selectedRange),
+              selectedRange.location >= 0, selectedRange.length == 0
+        else { return nil }
 
-        if rangeErr == .success, let rangeValue = selectedRangeValue {
-            let rangeAXValue = unsafeBitCast(rangeValue, to: AXValue.self)
-            var range = CFRange()
-            if AXValueGetValue(rangeAXValue, .cfRange, &range) {
-                caretIndex = range.location
-            }
-        }
-
-        // Get text value
+        // AX offsets are UTF-16 offsets, not Swift Character offsets.
         var textValue: CFTypeRef?
         let textErr = AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &textValue)
         var fullText = ""
@@ -233,18 +261,20 @@ public final class GhostTextManager: ObservableObject {
             fullText = text
         }
 
-        // Extract last 1-2 sentences before caret
-        var prefixText = ""
-        if !fullText.isEmpty && caretIndex > 0 && caretIndex <= fullText.count {
-            let endIndex = fullText.index(fullText.startIndex, offsetBy: caretIndex)
-            let beforeCaret = String(fullText[..<endIndex])
-            // Take up to last 200 characters
-            prefixText = String(beforeCaret.suffix(200))
-        }
+        // Extract context using UTF-16 offsets returned by Accessibility.
+        let utf16 = fullText.utf16
+        guard selectedRange.location <= utf16.count else { return nil }
+        let caretIndex = selectedRange.location
+        let endIndex = String.Index(utf16Offset: caretIndex, in: fullText)
+        let beforeCaret = String(fullText[..<endIndex])
+        let afterCaret = String(fullText[endIndex...])
+        let prefixText = String(beforeCaret.suffix(240))
+        let suffixText = String(afterCaret.prefix(240))
 
-        // Bounds for caret position to anchor floating overlay
+        // Bounds for caret position to anchor floating overlay.
         var caretRect: CGRect?
-        if let rangeValue = selectedRangeValue {
+        if let rangeValue = selectedRangeValue,
+           CFGetTypeID(rangeValue) == AXValueGetTypeID() {
             let rangeAXValue = unsafeBitCast(rangeValue, to: AXValue.self)
             var boundsValue: CFTypeRef?
             let boundsErr = AXUIElementCopyParameterizedAttributeValue(
@@ -253,16 +283,19 @@ public final class GhostTextManager: ObservableObject {
                 rangeAXValue,
                 &boundsValue
             )
-            if boundsErr == .success, let boundsVal = boundsValue {
+            if boundsErr == .success, let boundsVal = boundsValue,
+               CFGetTypeID(boundsVal) == AXValueGetTypeID() {
                 let boundsAXValue = unsafeBitCast(boundsVal, to: AXValue.self)
                 var rect = CGRect.zero
-                if AXValueGetValue(boundsAXValue, .cgRect, &rect) {
+                if AXValueGetType(boundsAXValue) == .cgRect,
+                   AXValueGetValue(boundsAXValue, .cgRect, &rect) {
                     caretRect = rect
                 }
             }
         }
 
-        return CaretContext(prefixText: prefixText, caretRect: caretRect, isSecure: false)
+        guard let caretRect, !caretRect.isEmpty else { return nil }
+        return CaretContext(prefixText: prefixText, suffixText: suffixText, caretRect: caretRect, isSecure: false)
     }
 }
 
