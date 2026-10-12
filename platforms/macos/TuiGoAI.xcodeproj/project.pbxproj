@@ -7,12 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		GHOSTTEXT001 /* GhostTextManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = GHOSTTEXT002 /* GhostTextManager.swift */; };
-		OLLAMA001 /* OllamaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = OLLAMA002 /* OllamaService.swift */; };
-		AISET001 /* AISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AISET002 /* AISettingsView.swift */; };
-		CHANGELOG001 /* ChangelogWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CHANGELOG002 /* ChangelogWindow.swift */; };
-		AITEST001 /* AIServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AITEST002 /* AIServiceTests.swift */; };
-		AISERVICE001 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AISERVICE002 /* AIService.swift */; };
 		A1000001000000000000001 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002000000000000001 /* App.swift */; };
 		A1000001000000000000002 /* MenuBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002000000000000002 /* MenuBar.swift */; };
 		A1000001000000000000003 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002000000000000003 /* SettingsView.swift */; };
@@ -24,15 +18,21 @@
 		A100000100000000000000B /* UpdateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000000B /* UpdateManager.swift */; };
 		A100000100000000000000D /* LaunchAtLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000000D /* LaunchAtLogin.swift */; };
 		A100000100000000000000F /* MainSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000000F /* MainSettingsView.swift */; };
-		SPECIALPANEL001 /* SpecialPanelAppDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = SPECIALPANEL002 /* SpecialPanelAppDetector.swift */; };
 		A1000001000000000000010 /* InputSourceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002000000000000010 /* InputSourceManager.swift */; };
 		ADVSET001 /* AdvancedSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADVSET002 /* AdvancedSettingsView.swift */; };
-		PACMOD001 /* PerAppConfigModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = PACMOD002 /* PerAppConfigModels.swift */; };
-		LOGVWR001 /* LogViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = LOGVWR002 /* LogViewer.swift */; };
+		AISERVICE001 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AISERVICE002 /* AIService.swift */; };
+		AISET001 /* AISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AISET002 /* AISettingsView.swift */; };
+		AITEST001 /* AIServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AITEST002 /* AIServiceTests.swift */; };
 		APKRSH001 /* AppPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = APKRSH002 /* AppPickerSheet.swift */; };
 		B1000001000000000000001 /* KeyboardShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002000000000000001 /* KeyboardShortcutTests.swift */; };
 		B1000001000000000000002 /* LaunchAtLoginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002000000000000002 /* LaunchAtLoginTests.swift */; };
 		B1000001000000000000003 /* SoundManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002000000000000003 /* SoundManagerTests.swift */; };
+		CHANGELOG001 /* ChangelogWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CHANGELOG002 /* ChangelogWindow.swift */; };
+		GHOSTTEXT001 /* GhostTextManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = GHOSTTEXT002 /* GhostTextManager.swift */; };
+		LOGVWR001 /* LogViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = LOGVWR002 /* LogViewer.swift */; };
+		OLLAMA001 /* OllamaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = OLLAMA002 /* OllamaService.swift */; };
+		PACMOD001 /* PerAppConfigModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = PACMOD002 /* PerAppConfigModels.swift */; };
+		SPECIALPANEL001 /* SpecialPanelAppDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = SPECIALPANEL002 /* SpecialPanelAppDetector.swift */; };
 		UPDATECHK001 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = UPDATECHK002 /* UpdateChecker.swift */; };
 /* End PBXBuildFile section */
 
@@ -47,12 +47,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		GHOSTTEXT002 /* GhostTextManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhostTextManager.swift; sourceTree = "<group>"; };
-		OLLAMA002 /* OllamaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaService.swift; sourceTree = "<group>"; };
-		AISET002 /* AISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsView.swift; sourceTree = "<group>"; };
-		CHANGELOG002 /* ChangelogWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangelogWindow.swift; sourceTree = "<group>"; };
-		AITEST002 /* AIServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIServiceTests.swift; sourceTree = "<group>"; };
-		AISERVICE002 /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
 		A1000002000000000000001 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		A1000002000000000000002 /* MenuBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBar.swift; sourceTree = "<group>"; };
 		A1000002000000000000003 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -65,18 +59,24 @@
 		A100000200000000000000B /* UpdateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateManager.swift; sourceTree = "<group>"; };
 		A100000200000000000000D /* LaunchAtLogin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLogin.swift; sourceTree = "<group>"; };
 		A100000200000000000000F /* MainSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainSettingsView.swift; sourceTree = "<group>"; };
-		SPECIALPANEL002 /* SpecialPanelAppDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpecialPanelAppDetector.swift; sourceTree = "<group>"; };
 		A1000002000000000000010 /* InputSourceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputSourceManager.swift; sourceTree = "<group>"; };
-		ADVSET002 /* AdvancedSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedSettingsView.swift; sourceTree = "<group>"; };
-		PACMOD002 /* PerAppConfigModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerAppConfigModels.swift; sourceTree = "<group>"; };
-		LOGVWR002 /* LogViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogViewer.swift; sourceTree = "<group>"; };
-		APKRSH002 /* AppPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPickerSheet.swift; sourceTree = "<group>"; };
-		UPDATECHK002 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		A1000003000000000000001 /* TuiGoAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TuiGoAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		ADVSET002 /* AdvancedSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedSettingsView.swift; sourceTree = "<group>"; };
+		AISERVICE002 /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
+		AISET002 /* AISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsView.swift; sourceTree = "<group>"; };
+		AITEST002 /* AIServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIServiceTests.swift; sourceTree = "<group>"; };
+		APKRSH002 /* AppPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPickerSheet.swift; sourceTree = "<group>"; };
 		B1000002000000000000001 /* KeyboardShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutTests.swift; sourceTree = "<group>"; };
 		B1000002000000000000002 /* LaunchAtLoginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginTests.swift; sourceTree = "<group>"; };
 		B1000002000000000000003 /* SoundManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManagerTests.swift; sourceTree = "<group>"; };
 		B1000003000000000000002 /* TuiGoAITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TuiGoAITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CHANGELOG002 /* ChangelogWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangelogWindow.swift; sourceTree = "<group>"; };
+		GHOSTTEXT002 /* GhostTextManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhostTextManager.swift; sourceTree = "<group>"; };
+		LOGVWR002 /* LogViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogViewer.swift; sourceTree = "<group>"; };
+		OLLAMA002 /* OllamaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaService.swift; sourceTree = "<group>"; };
+		PACMOD002 /* PerAppConfigModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerAppConfigModels.swift; sourceTree = "<group>"; };
+		SPECIALPANEL002 /* SpecialPanelAppDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpecialPanelAppDetector.swift; sourceTree = "<group>"; };
+		UPDATECHK002 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -209,7 +209,7 @@
 					};
 				};
 			};
-			buildConfigurationList = A1000011000000000000001 /* Build configuration list for PBXProject "GoNhanh" */;
+			buildConfigurationList = A1000011000000000000001 /* Build configuration list for PBXProject "TuiGoAI" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -425,7 +425,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = L669554UVR;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
@@ -466,7 +466,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = L669554UVR;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
@@ -545,7 +545,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A1000011000000000000001 /* Build configuration list for PBXProject "GoNhanh" */ = {
+		A1000011000000000000001 /* Build configuration list for PBXProject "TuiGoAI" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A1000012000000000000001 /* Debug */,
@@ -564,7 +564,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
 	};
 	rootObject = A1000010000000000000001 /* Project object */;
 }
