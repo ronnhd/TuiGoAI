@@ -305,6 +305,8 @@ public final class GhostTextManager: ObservableObject {
 
 final class GhostTextOverlayWindow: NSPanel {
     private let label = NSTextField(labelWithString: "")
+    private let badge = NSTextField(labelWithString: "Tab ⇥")
+    private let visualEffect = NSVisualEffectView()
 
     init() {
         super.init(
@@ -320,31 +322,33 @@ final class GhostTextOverlayWindow: NSPanel {
         backgroundColor = .clear
         hasShadow = true
         ignoresMouseEvents = true
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
+        animationBehavior = .none
 
-        let visualEffect = NSVisualEffectView()
         visualEffect.material = .hudWindow
         visualEffect.state = .active
         visualEffect.blendingMode = .behindWindow
         visualEffect.wantsLayer = true
         visualEffect.layer?.cornerRadius = 6
         visualEffect.layer?.masksToBounds = true
+        visualEffect.layer?.borderWidth = 0.5
+        visualEffect.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.3).cgColor
 
         label.font = NSFont.systemFont(ofSize: 13, weight: .regular)
-        label.textColor = NSColor.secondaryLabelColor
+        label.textColor = NSColor.labelColor.withAlphaComponent(0.85)
         label.maximumNumberOfLines = 1
+        label.lineBreakMode = .byTruncatingTail
         label.translatesAutoresizingMaskIntoConstraints = false
 
-        let badge = NSTextField(labelWithString: "Tab ⇥")
-        badge.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .bold)
-        badge.textColor = NSColor.tertiaryLabelColor
+        badge.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .medium)
+        badge.textColor = NSColor.secondaryLabelColor
         badge.translatesAutoresizingMaskIntoConstraints = false
 
         let stack = NSStackView(views: [label, badge])
         stack.orientation = .horizontal
         stack.spacing = 8
         stack.alignment = .centerY
-        stack.edgeInsets = NSEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
+        stack.edgeInsets = NSEdgeInsets(top: 3, left: 8, bottom: 3, right: 8)
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         visualEffect.addSubview(stack)
@@ -359,28 +363,54 @@ final class GhostTextOverlayWindow: NSPanel {
     }
 
     func display(text: String, at caretRect: CGRect?) {
+        updateBadgeText()
         label.stringValue = text
 
-        // Size to fit
         let size = label.intrinsicContentSize
-        let totalWidth = max(size.width + 70, 120)
-        let totalHeight: CGFloat = 28
+        let totalWidth = min(max(size.width + 64, 110), 650)
+        let totalHeight: CGFloat = 26
 
         var screenOrigin = CGPoint(x: 100, y: 100)
+        let primaryScreenHeight = NSScreen.screens.first?.frame.height ?? (NSScreen.main?.frame.height ?? 1080)
+
         if let caret = caretRect, !caret.isEmpty {
-            // Flip cocoa coordinate system: macOS AX returns top-left coords
-            if let mainScreen = NSScreen.main {
-                let screenHeight = mainScreen.frame.height
-                screenOrigin = CGPoint(x: caret.origin.x + caret.width + 4, y: screenHeight - caret.origin.y - totalHeight - 2)
-            } else {
-                screenOrigin = CGPoint(x: caret.origin.x + caret.width + 4, y: caret.origin.y)
-            }
+            // Coordinate conversion: AX coords have (0,0) at top-left of primary screen.
+            // AppKit coords have (0,0) at bottom-left of primary screen.
+            let caretBottomY = primaryScreenHeight - (caret.origin.y + caret.height)
+            let y = caretBottomY + (caret.height - totalHeight) / 2
+            let x = caret.origin.x + caret.width + 4
+            screenOrigin = CGPoint(x: x, y: y)
         } else if let mouseLoc = NSEvent.mouseLocation as CGPoint? {
-            screenOrigin = CGPoint(x: mouseLoc.x + 10, y: mouseLoc.y - 20)
+            // Fallback for Electron / WebKit fields where caret rect is unavailable
+            screenOrigin = CGPoint(x: mouseLoc.x + 8, y: mouseLoc.y - totalHeight - 4)
+        }
+
+        // Clamp to screen bounds so overlay doesn't overflow screen right edge
+        if let targetScreen = NSScreen.screens.first(where: { $0.frame.contains(screenOrigin) }) ?? NSScreen.main {
+            let maxX = targetScreen.frame.maxX - totalWidth - 8
+            if screenOrigin.x > maxX {
+                screenOrigin.x = max(targetScreen.frame.minX + 8, maxX)
+            }
         }
 
         setFrame(NSRect(origin: screenOrigin, size: CGSize(width: totalWidth, height: totalHeight)), display: true)
-        orderFront(nil)
+        if !isVisible {
+            orderFrontRegardless()
+        }
+    }
+
+    private func updateBadgeText() {
+        if let data = UserDefaults.standard.data(forKey: GhostTextManager.acceptShortcutKey),
+           let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data) {
+            if shortcut.keyCode == 0x30 && shortcut.modifiers == 0 {
+                badge.stringValue = "Tab ⇥"
+            } else {
+                let parts = shortcut.displayParts.joined()
+                badge.stringValue = parts.isEmpty ? "⇥" : "\(parts) ⇥"
+            }
+        } else {
+            badge.stringValue = "Tab ⇥"
+        }
     }
 
     func hide() {

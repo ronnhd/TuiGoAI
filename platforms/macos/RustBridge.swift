@@ -1095,6 +1095,9 @@ class KeyboardHookManager {
             }
             RustBridge.clearBufferAll() // Clear everything including word history
             skipWordRestoreAfterClick = true
+            DispatchQueue.main.async {
+                GhostTextManager.shared.dismiss()
+            }
         }
     }
 
@@ -2375,6 +2378,9 @@ class PerAppModeManager {
         Log.refresh() // Re-check debug log file existence on app switch
         RustBridge.clearBuffer()
         clearDetectionCache() // Clear injection method cache on app switch
+        DispatchQueue.main.async {
+            GhostTextManager.shared.dismiss()
+        }
 
         // Snapshot per-app profile for keystroke hot path (thread-safe read)
         DetectionCache.activeProfile = AppState.shared.advancedMode ? AppState.shared.perAppProfiles[bundleId] : nil
