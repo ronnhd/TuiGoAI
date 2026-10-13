@@ -102,14 +102,14 @@ struct KeyboardShortcut: Codable, Equatable {
     var keyCode: UInt16
     var modifiers: UInt64 // CGEventFlags raw value
 
-    // Default: Ctrl+Space (for toggle)
-    static let `default` = KeyboardShortcut(keyCode: 0x31, modifiers: CGEventFlags.maskControl.rawValue)
+    // Default: Ctrl+Shift (for toggle)
+    static let `default` = KeyboardShortcut(keyCode: 0xFFFF, modifiers: CGEventFlags([.maskControl, .maskShift]).rawValue)
 
     // Default: ESC (for restore diacritics)
     static let defaultRestore = KeyboardShortcut(keyCode: 0x35, modifiers: 0)
 
-    // Default: Ctrl+Shift+Space (secondary toggle, for external keyboards without fn)
-    static let defaultSecondaryToggle = KeyboardShortcut(keyCode: 0x31, modifiers: CGEventFlags([.maskControl, .maskShift]).rawValue)
+    // Default: Ctrl+Space (secondary toggle, for external keyboards without fn)
+    static let defaultSecondaryToggle = KeyboardShortcut(keyCode: 0x31, modifiers: CGEventFlags.maskControl.rawValue)
 
     var displayParts: [String] {
         var parts: [String] = []

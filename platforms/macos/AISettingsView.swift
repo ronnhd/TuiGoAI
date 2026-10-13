@@ -56,15 +56,15 @@ struct AISettingsView: View {
 
                         SettingRow(
                             title: "Độ dài gợi ý",
-                            description: "Gợi ý ngắn phản hồi nhanh hơn; dài viết câu trọn vẹn hơn"
+                            description: "Ngắn (1–3 từ) · Vừa (4–6 từ) · Dài (7–10 từ)"
                         ) {
                             Picker("", selection: $completionLength) {
-                                Text("Ngắn (1–3)").tag("short")
-                                Text("Vừa (4–6)").tag("medium")
-                                Text("Dài (7–10)").tag("long")
+                                Text("Ngắn").tag("short")
+                                Text("Vừa").tag("medium")
+                                Text("Dài").tag("long")
                             }
                             .pickerStyle(.segmented)
-                            .frame(width: 210)
+                            .frame(width: 175)
                         }
                     }
                     .flatCard()
