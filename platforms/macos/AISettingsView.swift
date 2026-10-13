@@ -8,12 +8,15 @@ struct AISettingsView: View {
     @State private var recordingAccept = false
     @State private var recordingToggle = false
     @State private var modelToDelete: OllamaModelInfo?
+    @AppStorage(GhostTextManager.displayModeKey) private var displayMode = "inline"
+    @AppStorage(GhostTextManager.completionLengthKey) private var completionLength = "medium"
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 aiToggle
+                appearanceSection
                 ollamaStatus
                 modelSection
                 shortcutSection
@@ -71,6 +74,53 @@ struct AISettingsView: View {
                 Toggle("", isOn: $config.isEnabled)
                     .labelsHidden()
                     .toggleStyle(.switch)
+            }
+        }
+    }
+
+    private var appearanceSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Hiển thị & Độ dài")
+                .font(.system(size: 15, weight: .semibold))
+            SettingsCard {
+                VStack(spacing: 12) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Kiểu hiển thị")
+                                .font(.system(size: 13, weight: .medium))
+                            Text("Chữ mờ tự nhiên tại con trỏ hoặc thẻ nổi có phím Tab.")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(NSColor.secondaryLabelColor))
+                        }
+                        Spacer()
+                        Picker("", selection: $displayMode) {
+                            Text("Inline (Chữ mờ)").tag("inline")
+                            Text("Pill (Thẻ nổi)").tag("pill")
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 200)
+                    }
+
+                    Divider()
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Độ dài gợi ý")
+                                .font(.system(size: 13, weight: .medium))
+                            Text("Gợi ý ngắn phản hồi nhanh hơn; dài viết câu trọn vẹn hơn.")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(NSColor.secondaryLabelColor))
+                        }
+                        Spacer()
+                        Picker("", selection: $completionLength) {
+                            Text("Ngắn (1–3)").tag("short")
+                            Text("Vừa (4–6)").tag("medium")
+                            Text("Dài (7–10)").tag("long")
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 200)
+                    }
+                }
             }
         }
     }

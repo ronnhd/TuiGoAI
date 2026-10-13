@@ -25,6 +25,8 @@ public final class GhostTextManager: ObservableObject {
     nonisolated public static let acceptShortcutKey = "tuigoai.ai.shortcut.accept"
     nonisolated public static let toggleShortcutKey = "tuigoai.ai.shortcut.toggle"
     nonisolated public static let aiEnabledKey = "tuigoai.ai.enabled"
+    nonisolated public static let displayModeKey = "tuigoai.ai.display.mode"
+    nonisolated public static let completionLengthKey = "tuigoai.ai.completion.length"
 
     private init() {
         setupOverlay()
@@ -307,6 +309,7 @@ final class GhostTextOverlayWindow: NSPanel {
     private let label = NSTextField(labelWithString: "")
     private let badge = NSTextField(labelWithString: "Tab ⇥")
     private let visualEffect = NSVisualEffectView()
+    private var stack: NSStackView!
 
     init() {
         super.init(
@@ -320,11 +323,12 @@ final class GhostTextOverlayWindow: NSPanel {
         level = .floating
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = true
+        hasShadow = false
         ignoresMouseEvents = true
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         animationBehavior = .none
 
+        let container = NSView()
         visualEffect.material = .hudWindow
         visualEffect.state = .active
         visualEffect.blendingMode = .behindWindow
@@ -333,9 +337,9 @@ final class GhostTextOverlayWindow: NSPanel {
         visualEffect.layer?.masksToBounds = true
         visualEffect.layer?.borderWidth = 0.5
         visualEffect.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.3).cgColor
+        visualEffect.translatesAutoresizingMaskIntoConstraints = false
 
         label.font = NSFont.systemFont(ofSize: 13, weight: .regular)
-        label.textColor = NSColor.labelColor.withAlphaComponent(0.85)
         label.maximumNumberOfLines = 1
         label.lineBreakMode = .byTruncatingTail
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -344,30 +348,56 @@ final class GhostTextOverlayWindow: NSPanel {
         badge.textColor = NSColor.secondaryLabelColor
         badge.translatesAutoresizingMaskIntoConstraints = false
 
-        let stack = NSStackView(views: [label, badge])
+        stack = NSStackView(views: [label, badge])
         stack.orientation = .horizontal
-        stack.spacing = 8
+        stack.spacing = 6
         stack.alignment = .centerY
-        stack.edgeInsets = NSEdgeInsets(top: 3, left: 8, bottom: 3, right: 8)
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        visualEffect.addSubview(stack)
+        container.addSubview(visualEffect)
+        container.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: visualEffect.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: visualEffect.trailingAnchor),
-            stack.topAnchor.constraint(equalTo: visualEffect.topAnchor),
-            stack.bottomAnchor.constraint(equalTo: visualEffect.bottomAnchor),
+            visualEffect.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            visualEffect.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            visualEffect.topAnchor.constraint(equalTo: container.topAnchor),
+            visualEffect.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: container.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
 
-        contentView = visualEffect
+        contentView = container
     }
 
     func display(text: String, at caretRect: CGRect?) {
-        updateBadgeText()
+        let isInline = (UserDefaults.standard.string(forKey: GhostTextManager.displayModeKey) ?? "inline") == "inline"
+        updateBadgeText(isInline: isInline)
         label.stringValue = text
 
+        // Styling based on display mode
+        if isInline {
+            hasShadow = false
+            visualEffect.isHidden = true
+            label.textColor = NSColor.placeholderTextColor
+            badge.isHidden = true
+            stack.edgeInsets = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+        } else {
+            hasShadow = true
+            visualEffect.isHidden = false
+            label.textColor = NSColor.labelColor.withAlphaComponent(0.85)
+            badge.isHidden = false
+            stack.edgeInsets = NSEdgeInsets(top: 3, left: 8, bottom: 3, right: 8)
+        }
+
         let size = label.intrinsicContentSize
-        let totalWidth = min(max(size.width + 64, 110), 650)
+        let totalWidth: CGFloat
+        if isInline {
+            totalWidth = size.width + 4
+        } else {
+            totalWidth = min(max(size.width + 64, 110), 650)
+        }
         let totalHeight: CGFloat = 26
 
         var screenOrigin = CGPoint(x: 100, y: 100)
@@ -378,7 +408,7 @@ final class GhostTextOverlayWindow: NSPanel {
             // AppKit coords have (0,0) at bottom-left of primary screen.
             let caretBottomY = primaryScreenHeight - (caret.origin.y + caret.height)
             let y = caretBottomY + (caret.height - totalHeight) / 2
-            let x = caret.origin.x + caret.width + 4
+            let x = isInline ? caret.origin.x + caret.width : caret.origin.x + caret.width + 4
             screenOrigin = CGPoint(x: x, y: y)
         } else if let mouseLoc = NSEvent.mouseLocation as CGPoint? {
             // Fallback for Electron / WebKit fields where caret rect is unavailable
@@ -399,7 +429,8 @@ final class GhostTextOverlayWindow: NSPanel {
         }
     }
 
-    private func updateBadgeText() {
+    private func updateBadgeText(isInline: Bool) {
+        guard !isInline else { return }
         if let data = UserDefaults.standard.data(forKey: GhostTextManager.acceptShortcutKey),
            let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data) {
             if shortcut.keyCode == 0x30 && shortcut.modifiers == 0 {

@@ -52,6 +52,15 @@ final class AIServiceTests: XCTestCase {
         XCTAssertEqual(cleaned, "proposal mới kickoff hôm nay")
     }
 
+    func testCleanCompletionWithoutTrailingSpaceAddsLeadingSpace() {
+        let cleaned = AIService.cleanCompletion(
+            "proposal cho chiến dịch PR tại Việt Nam",
+            prefix: "Mình gửi bạn bản đề xuất",
+            suffix: ""
+        )
+        XCTAssertEqual(cleaned, " proposal cho chiến dịch PR tại Việt Nam")
+    }
+
     func testToneInstructions() {
         XCTAssertFalse(AIRewriteTone.formal.promptInstruction.isEmpty)
         XCTAssertFalse(AIRewriteTone.casual.promptInstruction.isEmpty)

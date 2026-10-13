@@ -38,15 +38,65 @@ public enum CaretBoundary {
             result = result.dropFirst()
         }
 
-        // If the caret already sits after whitespace, drop any leading whitespace
-        // emitted by the model so we don't create double spaces.
+        guard !result.isEmpty else { return "" }
+
         if let last = beforeCursor.last, last.isWhitespace {
+            // Already has whitespace: drop any leading whitespace so we don't double space
             while let first = result.first, first.isWhitespace {
                 result = result.dropFirst()
             }
+        } else if let last = beforeCursor.last, !last.isWhitespace {
+            // Caret is touching a word without trailing space (e.g. "xuất" in "bản đề xuất"):
+            // Ensure there is exactly ONE leading space so the continuation doesn't merge with the word!
+            while let first = result.first, first.isWhitespace {
+                result = result.dropFirst()
+            }
+            return " " + String(result)
         }
 
         return String(result)
+    }
+}
+
+// MARK: - Display & Length Configuration
+
+public enum GhostTextDisplayMode: String, CaseIterable, Identifiable, Codable {
+    case inline = "inline"
+    case pill = "pill"
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .inline: return "Chữ mờ trong dòng (Inline)"
+        case .pill: return "Thẻ nổi cạnh con trỏ (Pill)"
+        }
+    }
+}
+
+public enum GhostTextCompletionLength: String, CaseIterable, Identifiable, Codable {
+    case short = "short"
+    case medium = "medium"
+    case long = "long"
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .short: return "Ngắn (1–3 từ)"
+        case .medium: return "Vừa (4–6 từ)"
+        case .long: return "Dài (7–10 từ)"
+        }
+    }
+    public var maxWords: Int {
+        switch self {
+        case .short: return 3
+        case .medium: return 6
+        case .long: return 10
+        }
+    }
+    public var numPredict: Int {
+        switch self {
+        case .short: return 16
+        case .medium: return 24
+        case .long: return 36
+        }
     }
 }
 

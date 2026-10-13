@@ -356,6 +356,9 @@ public final class AIService: @unchecked Sendable {
         let model = config.model.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !model.isEmpty else { throw AIError.noResponse }
 
+        let lengthRaw = UserDefaults.standard.string(forKey: GhostTextManager.completionLengthKey) ?? "medium"
+        let lengthConfig = GhostTextCompletionLength(rawValue: lengthRaw) ?? .medium
+
         let trimmedPrefix = CaretBoundary.trimmingTrailingWhitespace(prefixText)
         guard !trimmedPrefix.isEmpty else { throw AIError.noResponse }
         let windowedPrefix = String(trimmedPrefix.suffix(1000))
@@ -368,7 +371,7 @@ public final class AIService: @unchecked Sendable {
             stream: false,
             options: OllamaGenerateRequest.Options(
                 temperature: 0.2,
-                numPredict: 24,
+                numPredict: lengthConfig.numPredict,
                 stop: ["\n", "\r", "<|im_end|>", "<|endoftext|>", "```"]
             ),
             keepAlive: "5m"
@@ -393,27 +396,26 @@ public final class AIService: @unchecked Sendable {
         }
         let result = try JSONDecoder().decode(OllamaGenerateResponse.self, from: data)
         guard let raw = result.response, !raw.isEmpty else { throw AIError.noResponse }
-        let reconciled = CaretBoundary.reconcile(raw, beforeCursor: prefixText)
-        let cleaned = Self.cleanCompletion(reconciled, prefix: prefixText, suffix: suffixText)
+        let cleaned = Self.cleanCompletion(raw, prefix: prefixText, suffix: suffixText, maxWords: lengthConfig.maxWords)
         guard !cleaned.isEmpty else { throw AIError.noResponse }
         return cleaned
     }
 
-    static func cleanCompletion(_ raw: String, prefix: String, suffix: String) -> String {
-        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    static func cleanCompletion(_ raw: String, prefix: String, suffix: String, maxWords: Int = 8) -> String {
+        var text = raw.trimmingCharacters(in: .newlines)
         text = text.replacingOccurrences(of: "^```[^\\n]*\\n|\\n```$", with: "", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\\\"'`")))
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\\\"'`"))
         guard !text.isEmpty else { return "" }
         if !prefix.isEmpty && text.hasPrefix(prefix) {
-            text = String(text.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+            text = String(text.dropFirst(prefix.count))
         }
         guard !text.isEmpty else { return "" }
 
         // Suffix overlap guard
         if !suffix.isEmpty {
-            if SuffixOverlapGuard.duplicatesSuffix(completion: text, beforeCursor: prefix, afterCursor: suffix) {
-                if let nonDupLen = SuffixOverlapGuard.nonDuplicatingPrefixLength(completion: text, beforeCursor: prefix, afterCursor: suffix), nonDupLen > 0 {
-                    text = String(text.prefix(nonDupLen)).trimmingCharacters(in: .whitespacesAndNewlines)
+            if SuffixOverlapGuard.duplicatesSuffix(completion: text.trimmingCharacters(in: .whitespaces), beforeCursor: prefix, afterCursor: suffix) {
+                if let nonDupLen = SuffixOverlapGuard.nonDuplicatingPrefixLength(completion: text.trimmingCharacters(in: .whitespaces), beforeCursor: prefix, afterCursor: suffix), nonDupLen > 0 {
+                    text = String(text.prefix(nonDupLen))
                 } else {
                     return ""
                 }
@@ -437,7 +439,9 @@ public final class AIService: @unchecked Sendable {
             }
             deduplicated.append(word)
         }
-        return deduplicated.prefix(8).joined(separator: " ")
+        let joined = deduplicated.prefix(maxWords).joined(separator: " ")
+        guard !joined.isEmpty else { return "" }
+        return CaretBoundary.reconcile(joined, beforeCursor: prefix)
     }
 
     private struct OllamaGenerateRequest: Encodable {
