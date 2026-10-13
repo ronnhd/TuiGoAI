@@ -299,31 +299,66 @@ public final class GhostTextManager: ObservableObject {
         let suffixText = String(afterCaret.prefix(500))
 
         // Bounds for caret position to anchor floating overlay.
+        // Bounds for caret position to anchor floating overlay.
         var caretRect: CGRect?
-        if let rangeValue = selectedRangeValue,
-           CFGetTypeID(rangeValue) == AXValueGetTypeID() {
-            let rangeAXValue = unsafeBitCast(rangeValue, to: AXValue.self)
+
+        func queryBounds(range: CFRange) -> CGRect? {
+            var r = range
+            guard let axVal = AXValueCreate(.cfRange, &r) else { return nil }
             var boundsValue: CFTypeRef?
             let boundsErr = AXUIElementCopyParameterizedAttributeValue(
                 element,
                 kAXBoundsForRangeParameterizedAttribute as CFString,
-                rangeAXValue,
+                axVal,
                 &boundsValue
             )
-            if boundsErr == .success, let boundsVal = boundsValue,
-               CFGetTypeID(boundsVal) == AXValueGetTypeID() {
-                let boundsAXValue = unsafeBitCast(boundsVal, to: AXValue.self)
-                var rect = CGRect.zero
-                if AXValueGetType(boundsAXValue) == .cgRect,
-                   AXValueGetValue(boundsAXValue, .cgRect, &rect) {
-                    caretRect = rect
+            guard boundsErr == .success, let boundsVal = boundsValue,
+                  CFGetTypeID(boundsVal) == AXValueGetTypeID() else { return nil }
+            let boundsAXValue = unsafeBitCast(boundsVal, to: AXValue.self)
+            var rect = CGRect.zero
+            if AXValueGetType(boundsAXValue) == .cgRect,
+               AXValueGetValue(boundsAXValue, .cgRect, &rect),
+               !rect.isEmpty {
+                return rect
+            }
+            return nil
+        }
+
+        // 1. Try zero-length caret rect
+        if let rect = queryBounds(range: selectedRange) {
+            caretRect = rect
+        } else if selectedRange.location > 0 {
+            // 2. Fallback for WebKit / Electron / Chromium: bounds of the character immediately before caret
+            if let charRect = queryBounds(range: CFRange(location: selectedRange.location - 1, length: 1)) {
+                caretRect = CGRect(x: charRect.maxX, y: charRect.origin.y, width: 2, height: charRect.height)
+            }
+        } else if selectedRange.location == 0 && utf16.count > 0 {
+            // 3. Start of text: bounds of the first character
+            if let charRect = queryBounds(range: CFRange(location: 0, length: 1)) {
+                caretRect = CGRect(x: charRect.minX, y: charRect.origin.y, width: 2, height: charRect.height)
+            }
+        }
+
+        // 4. Fallback for fields where kAXBoundsForRange is not supported: anchor to focused element frame
+        if caretRect == nil {
+            var posValue: CFTypeRef?
+            var sizeValue: CFTypeRef?
+            if AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &posValue) == .success,
+               AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeValue) == .success,
+               let pVal = posValue, let sVal = sizeValue {
+                var pos = CGPoint.zero
+                var size = CGSize.zero
+                let axPos = unsafeBitCast(pVal, to: AXValue.self)
+                let axSize = unsafeBitCast(sVal, to: AXValue.self)
+                if AXValueGetType(axPos) == .cgPoint, AXValueGetType(axSize) == .cgSize,
+                   AXValueGetValue(axPos, .cgPoint, &pos),
+                   AXValueGetValue(axSize, .cgSize, &size),
+                   size.width > 10, size.height > 0 {
+                    caretRect = CGRect(x: pos.x + 8, y: pos.y + max(0, size.height - 24), width: 2, height: min(size.height, 22))
                 }
             }
         }
 
-        // Some Electron/WebKit text fields expose text and selection but do not
-        // implement kAXBoundsForRangeParameterizedAttribute. Keep the context
-        // usable; the overlay will fall back to the current mouse position.
         return CaretContext(prefixText: prefixText, suffixText: suffixText, caretRect: caretRect, isSecure: false, bundleId: currentBundleId, appName: currentAppName)
     }
 }
@@ -428,17 +463,17 @@ final class GhostTextOverlayWindow: NSPanel {
         var screenOrigin = CGPoint(x: 100, y: 100)
         let primaryScreenHeight = NSScreen.screens.first?.frame.height ?? (NSScreen.main?.frame.height ?? 1080)
 
-        if let caret = caretRect, !caret.isEmpty {
-            // Coordinate conversion: AX coords have (0,0) at top-left of primary screen.
-            // AppKit coords have (0,0) at bottom-left of primary screen.
-            let caretBottomY = primaryScreenHeight - (caret.origin.y + caret.height)
-            let y = caretBottomY + (caret.height - totalHeight) / 2
-            let x = isInline ? caret.origin.x + caret.width : caret.origin.x + caret.width + 4
-            screenOrigin = CGPoint(x: x, y: y)
-        } else if let mouseLoc = NSEvent.mouseLocation as CGPoint? {
-            // Fallback for Electron / WebKit fields where caret rect is unavailable
-            screenOrigin = CGPoint(x: mouseLoc.x + 8, y: mouseLoc.y - totalHeight - 4)
+        guard let caret = caretRect, !caret.isEmpty else {
+            hide()
+            return
         }
+
+        // Coordinate conversion: AX coords have (0,0) at top-left of primary screen.
+        // AppKit coords have (0,0) at bottom-left of primary screen.
+        let caretBottomY = primaryScreenHeight - (caret.origin.y + caret.height)
+        let y = caretBottomY + (caret.height - totalHeight) / 2
+        let x = isInline ? caret.origin.x + caret.width : caret.origin.x + caret.width + 4
+        screenOrigin = CGPoint(x: x, y: y)
 
         // Clamp to screen bounds so overlay doesn't overflow screen right edge
         if let targetScreen = NSScreen.screens.first(where: { $0.frame.contains(screenOrigin) }) ?? NSScreen.main {
