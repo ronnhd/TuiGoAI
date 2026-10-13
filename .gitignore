@@ -44,17 +44,8 @@ obj/
 *.swo
 *~
 
-# Agent configs (not project-specific)
-.claude/*
-!.claude/skills/
-!.claude/commands/
-.claude/skills/*
-!.claude/skills/github-assistant/
-.claude/commands/*
-!.claude/commands/github.md
-.claude/.env*
-.claude/skills/.env*
-**/.claude/
+# Agent configs
+.claude/
 .opencode/
 plans/
 CLAUDE.md
