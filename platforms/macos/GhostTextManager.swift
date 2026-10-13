@@ -270,8 +270,8 @@ public final class GhostTextManager: ObservableObject {
         let endIndex = String.Index(utf16Offset: caretIndex, in: fullText)
         let beforeCaret = String(fullText[..<endIndex])
         let afterCaret = String(fullText[endIndex...])
-        let prefixText = String(beforeCaret.suffix(240))
-        let suffixText = String(afterCaret.prefix(240))
+        let prefixText = String(beforeCaret.suffix(2000))
+        let suffixText = String(afterCaret.prefix(500))
 
         // Bounds for caret position to anchor floating overlay.
         var caretRect: CGRect?

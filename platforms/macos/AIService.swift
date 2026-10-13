@@ -361,7 +361,7 @@ public final class AIService: @unchecked Sendable {
 
         let trimmedPrefix = CaretBoundary.trimmingTrailingWhitespace(prefixText)
         guard !trimmedPrefix.isEmpty else { throw AIError.noResponse }
-        let windowedPrefix = String(trimmedPrefix.suffix(1000))
+        let windowedPrefix = String(trimmedPrefix.suffix(2000))
 
         let endpoint = URL(string: "http://localhost:11434/api/generate")!
         let payload = OllamaGenerateRequest(
@@ -370,7 +370,9 @@ public final class AIService: @unchecked Sendable {
             raw: true,
             stream: false,
             options: OllamaGenerateRequest.Options(
-                temperature: 0.2,
+                temperature: 0.1,
+                topP: 0.8,
+                topK: 20,
                 numPredict: lengthConfig.numPredict,
                 stop: ["\n", "\r", "<|im_end|>", "<|endoftext|>", "```"]
             ),
@@ -447,10 +449,14 @@ public final class AIService: @unchecked Sendable {
     private struct OllamaGenerateRequest: Encodable {
         struct Options: Encodable {
             let temperature: Double
+            let topP: Double?
+            let topK: Int?
             let numPredict: Int
             let stop: [String]
             enum CodingKeys: String, CodingKey {
                 case temperature
+                case topP = "top_p"
+                case topK = "top_k"
                 case numPredict = "num_predict"
                 case stop
             }
