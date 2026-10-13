@@ -421,8 +421,9 @@ public final class AIService: @unchecked Sendable {
     }
 
     static let autocompleteSystemPrompt = """
-    Bạn là bộ gõ tiếng Việt. Viết tiếp đúng văn đang gõ.
-    Chỉ trả phần tiếp theo (vài từ). Không lặp lại đoạn đã gõ. Giữ xưng hô và giọng đang dùng. Không giải thích, không ngoặc kép, không xuống dòng.
+    Bạn hoàn thành câu tiếng Việt ngay tại con trỏ.
+    Chỉ xuất các từ MỚI tiếp theo. Cấm viết lại, cấm nhắc lại từ vừa gõ.
+    Không giải thích, không ngoặc kép, không xuống dòng.
     """
 
     static func buildAutocompleteUserPrompt(
@@ -442,10 +443,45 @@ public final class AIService: @unchecked Sendable {
             parts.append("Các câu tôi vừa gửi:")
             parts.append(history.joined(separator: "\n"))
         }
-        parts.append("Đang gõ:")
+        parts.append("Đã gõ (không lặp lại):")
         parts.append(prefix)
-        parts.append("Viết tiếp phần mới, không lặp lại.")
+        parts.append("Từ mới tiếp theo:")
         return parts.joined(separator: "\n")
+    }
+
+    static func stripOverlappingPrefix(_ text: String, prefix: String) -> String {
+        var result = text.trimmingCharacters(in: .newlines)
+        let trimmedPrefix = prefix.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPrefix.isEmpty, !result.isEmpty else { return result }
+
+        if result.hasPrefix(trimmedPrefix) {
+            return String(result.dropFirst(trimmedPrefix.count))
+        }
+        let lowerPrefix = trimmedPrefix.lowercased()
+        let lowerResult = result.lowercased()
+        if lowerResult.hasPrefix(lowerPrefix) {
+            return String(result.dropFirst(trimmedPrefix.count))
+        }
+
+        let prefixWords = trimmedPrefix.split(whereSeparator: \.isWhitespace).map(String.init)
+        let resultWords = result.split(whereSeparator: \.isWhitespace).map(String.init)
+        let maxOverlap = min(prefixWords.count, resultWords.count)
+        guard maxOverlap >= 1 else { return result }
+
+        for count in stride(from: maxOverlap, through: 1, by: -1) {
+            let suffix = Array(prefixWords.suffix(count))
+            let head = Array(resultWords.prefix(count))
+            let matched = zip(suffix, head).allSatisfy { left, right in
+                left.trimmingCharacters(in: .punctuationCharacters)
+                    .localizedCaseInsensitiveCompare(
+                        right.trimmingCharacters(in: .punctuationCharacters)
+                    ) == .orderedSame
+            }
+            if matched {
+                return resultWords.dropFirst(count).joined(separator: " ")
+            }
+        }
+        return result
     }
 
     static func cleanCompletion(_ raw: String, prefix: String, suffix: String, maxWords: Int = 8) -> String {
@@ -453,9 +489,7 @@ public final class AIService: @unchecked Sendable {
         text = text.replacingOccurrences(of: "^```[^\\n]*\\n|\\n```$", with: "", options: .regularExpression)
             .trimmingCharacters(in: CharacterSet(charactersIn: "\\\"'`"))
         guard !text.isEmpty else { return "" }
-        if !prefix.isEmpty && text.hasPrefix(prefix) {
-            text = String(text.dropFirst(prefix.count))
-        }
+        text = stripOverlappingPrefix(text, prefix: prefix)
         guard !text.isEmpty else { return "" }
 
         // Suffix overlap guard

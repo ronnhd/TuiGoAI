@@ -70,8 +70,8 @@ final class AIServiceTests: XCTestCase {
 
     func testAutocompleteUserPromptKeepsPrefixAsPlainText() {
         let prompt = AIService.buildAutocompleteUserPrompt(prefix: "mai mình")
-        XCTAssertTrue(prompt.contains("Đang gõ:\nmai mình"))
-        XCTAssertTrue(prompt.contains("Viết tiếp phần mới, không lặp lại."))
+        XCTAssertTrue(prompt.contains("Đã gõ (không lặp lại):\nmai mình"))
+        XCTAssertTrue(prompt.contains("Từ mới tiếp theo:"))
         XCTAssertFalse(prompt.contains("- mai mình"))
     }
 
@@ -84,9 +84,27 @@ final class AIServiceTests: XCTestCase {
         XCTAssertTrue(prompt.contains("Ứng dụng: Telegram."))
         XCTAssertTrue(prompt.contains("Các câu tôi vừa gửi:"))
         XCTAssertTrue(prompt.contains("Chào bạn, hôm nay có họp không?\nTôi vừa gửi file qua email"))
-        XCTAssertTrue(prompt.contains("Đang gõ:\ncòn họp lúc"))
+        XCTAssertTrue(prompt.contains("Đã gõ (không lặp lại):\ncòn họp lúc"))
         XCTAssertFalse(prompt.contains("- Chào bạn"))
         XCTAssertFalse(prompt.contains("- còn họp lúc"))
+    }
+
+    func testCleanCompletionStripsRewrittenPrefix() {
+        let cleaned = AIService.cleanCompletion(
+            "mai mình đi họp với team",
+            prefix: "mai mình đi",
+            suffix: ""
+        )
+        XCTAssertEqual(cleaned, " họp với team")
+    }
+
+    func testCleanCompletionStripsPartialWordOverlap() {
+        let cleaned = AIService.cleanCompletion(
+            "mình gửi proposal",
+            prefix: "Mình gửi ",
+            suffix: ""
+        )
+        XCTAssertEqual(cleaned, "proposal")
     }
 
     // MARK: - AutocompleteCore Tests (KeyType ported)
