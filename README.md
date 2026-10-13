@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="TuiGoAI Logo" width="128" height="128">
+</p>
+
 <h1 align="center">
   TuiGoAI (Tui Gõ AI)
 </h1>
