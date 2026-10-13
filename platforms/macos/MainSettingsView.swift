@@ -8,8 +8,6 @@ import UniformTypeIdentifiers
 class SoundManager {
     static let shared = SoundManager()
 
-    // Cache sound instances to prevent issues with rapid toggling
-    // Issue #168: sounds not playing when toggling rapidly
     private let enableSound: NSSound?
     private let disableSound: NSSound?
     private var currentSound: NSSound?
@@ -21,31 +19,29 @@ class SoundManager {
 
     func playToggleSound(enabled: Bool) {
         guard AppState.shared.soundEnabled else { return }
-
-        // Stop any currently playing sound to handle rapid toggling
         currentSound?.stop()
-
-        // Use cached sound instances
         let sound = enabled ? enableSound : disableSound
         currentSound = sound
         sound?.play()
     }
 }
 
-// MARK: - Navigation
+// MARK: - Navigation Pages
 
 enum NavigationPage: String, CaseIterable {
-    case settings = "Cài đặt"
+    case overview = "Tổng quan"
+    case typing = "Bộ gõ"
     case ai = "AI Copilot"
-    case advanced = "Nâng cao"
+    case apps = "Ứng dụng"
     case about = "Giới thiệu"
 
     var icon: String {
         switch self {
-        case .settings: "gearshape"
+        case .overview: "slider.horizontal.3"
+        case .typing: "keyboard"
         case .ai: "wand.and.stars"
-        case .advanced: "wrench.and.screwdriver"
-        case .about: "bolt.fill"
+        case .apps: "macwindow"
+        case .about: "info.circle"
         }
     }
 }
@@ -64,22 +60,18 @@ class AppState: ObservableObject {
             guard !isSilentUpdate else { return }
 
             if perAppModeEnabled {
-                // Per-app mode: only save per-app state, don't update global
-                // Global state stays as "default" for new apps
                 if let bundleId = PerAppModeManager.shared.getCurrentBundleId() {
                     savePerAppMode(bundleId: bundleId, enabled: isEnabled)
                 } else if let bundleId = NSWorkspace.shared.frontmostApplication?.bundleIdentifier {
                     savePerAppMode(bundleId: bundleId, enabled: isEnabled)
                 }
             } else {
-                // Global mode: save global state
                 UserDefaults.standard.set(isEnabled, forKey: SettingsKey.enabled)
             }
         }
     }
 
     @Published private(set) var isSecureInputBlocked = false
-    /// App reported by macOS as holding Secure Input; nil when unknown or not blocked.
     @Published private(set) var secureInputHolderName: String?
 
     var shouldShowSecureInputWarning: Bool {
@@ -203,13 +195,12 @@ class AppState: ObservableObject {
         }
     }
 
-    @Published var advancedMode: Bool = false {
+    @Published var advancedMode: Bool = true {
         didSet {
             UserDefaults.standard.set(advancedMode, forKey: SettingsKey.advancedMode)
         }
     }
 
-    /// Disable Spotlight/Raycast panel detection for better performance
     @Published var disablePanelDetection: Bool = false {
         didSet {
             UserDefaults.standard.set(disablePanelDetection, forKey: SettingsKey.disablePanelDetection)
@@ -222,24 +213,14 @@ class AppState: ObservableObject {
         }
     }
 
-    /// Use cgSessionEventTap instead of cghidEventTap.
-    /// Enables Vietnamese input for keystrokes injected at session level (invisible to the
-    /// default HID tap): the macOS Accessibility Keyboard / on-screen keyboards (issue #395)
-    /// and remote desktop software (RustDesk, AnyDesk, TeamViewer).
-    /// Applied immediately via restart().
     @Published var sessionTapMode: Bool = false {
         didSet {
             UserDefaults.standard.set(sessionTapMode, forKey: SettingsKey.sessionTapMode)
-            // Skip restart during init: AppState.shared is still being constructed
-            // (dispatch_once in progress), so accessing it from restart() → start()
-            // would cause recursive lock crash. User-triggered toggles always run
-            // after init completes, when isSilentUpdate is false.
             guard !isSilentUpdate else { return }
             KeyboardHookManager.shared.restart()
         }
     }
 
-    /// Per-app profiles: delay preset + method override per bundleId
     @Published var perAppProfiles: [String: PerAppConfig] = [:] {
         didSet {
             if let data = try? JSONEncoder().encode(perAppProfiles) {
@@ -253,13 +234,7 @@ class AppState: ObservableObject {
     @Published var isLaunchAtLoginEnabled: Bool = false
     @Published var requiresManualLaunchAtLogin: Bool = false
 
-    // MARK: - Init
-
     init() {
-        // Defaults are registered in App.swift's applicationDidFinishLaunching
-        // before AppState.shared is accessed
-
-        // Load all settings from UserDefaults
         let defaults = UserDefaults.standard
         isEnabled = defaults.bool(forKey: SettingsKey.enabled)
         currentMethod = InputMode(rawValue: defaults.integer(forKey: SettingsKey.method)) ?? .telex
@@ -279,11 +254,9 @@ class AppState: ObservableObject {
         }
         soundEnabled = defaults.bool(forKey: SettingsKey.soundEnabled)
         allowForeignConsonants = defaults.bool(forKey: SettingsKey.allowForeignConsonants)
-        advancedMode = defaults.bool(forKey: SettingsKey.advancedMode)
+        advancedMode = true
         disablePanelDetection = defaults.bool(forKey: SettingsKey.disablePanelDetection)
         restartOnClose = defaults.bool(forKey: SettingsKey.restartOnClose)
-        // Silent load: prevent didSet from calling KeyboardHookManager.restart()
-        // during init, which would recursively access AppState.shared and crash.
         isSilentUpdate = true
         sessionTapMode = defaults.bool(forKey: SettingsKey.sessionTapMode)
         isSilentUpdate = false
@@ -293,13 +266,8 @@ class AppState: ObservableObject {
             perAppProfiles = profiles
         }
 
-        // Sync settings to Rust engine
         syncAllToEngine()
-
-        // Load complex data
         loadShortcuts()
-
-        // Setup observers and services
         setupObservers()
         setupLaunchAtLoginMonitoring()
     }
@@ -316,7 +284,6 @@ class AppState: ObservableObject {
         RustBridge.setAllowForeignConsonants(allowForeignConsonants)
     }
 
-    /// Update auto-capitalize engine state based on global setting and current app exclusion
     func updateAutoCapitalizeEngine() {
         let currentBundleId = PerAppModeManager.shared.getCurrentBundleId()
             ?? NSWorkspace.shared.frontmostApplication?.bundleIdentifier
@@ -324,44 +291,31 @@ class AppState: ObservableObject {
         RustBridge.setAutoCapitalize(autoCapitalize && !isExcluded)
     }
 
-    /// Check if an app is excluded from auto-capitalize
     func isAppExcludedFromAutoCapitalize(_ bundleId: String) -> Bool {
         autoCapitalizeExcludedApps.contains(bundleId)
     }
 
-    /// Add an app to auto-capitalize exclusion list
     func excludeAppFromAutoCapitalize(_ bundleId: String) {
         autoCapitalizeExcludedApps.insert(bundleId)
     }
 
-    /// Remove an app from auto-capitalize exclusion list
     func includeAppInAutoCapitalize(_ bundleId: String) {
         autoCapitalizeExcludedApps.remove(bundleId)
     }
 
-    /// Track global enabled state before per-app profile override, so we can restore on app switch
     private var profileSavedEnabled: Bool?
 
-    /// Apply per-app profile override when switching apps.
-    ///
-    /// State machine: Tắt → saves enabled → Bật → force enable
-    ///                → No profile → restores from UserDefaults (ground truth)
-    ///
-    /// Runs BEFORE restorePerAppMode in handleAppSwitch. restorePerAppMode checks
-    /// profile.enabled to avoid re-enabling GN when profile has it disabled.
     func applyPerAppProfile(bundleId: String) {
-        guard advancedMode, let profile = perAppProfiles[bundleId] else {
+        guard let profile = perAppProfiles[bundleId] else {
             restoreProfileDefaults()
             return
         }
 
-        // No overrides — restore defaults
         guard profile.enabledState != 0 else {
             restoreProfileDefaults()
             return
         }
 
-        // "Tắt" — disable Vietnamese for this app
         if profile.enabledState == -1 {
             if profileSavedEnabled == nil {
                 profileSavedEnabled = isEnabled
@@ -371,7 +325,6 @@ class AppState: ObservableObject {
             return
         }
 
-        // "Bật" — force enable Vietnamese for this app
         if profile.enabledState == 1 {
             if profileSavedEnabled == nil {
                 profileSavedEnabled = isEnabled
@@ -405,8 +358,6 @@ class AppState: ObservableObject {
         }
     }
 
-    // MARK: - Observers
-
     private func setupObservers() {
         NotificationCenter.default.publisher(for: .inputSourceChanged)
             .receive(on: DispatchQueue.main)
@@ -426,18 +377,13 @@ class AppState: ObservableObject {
             .store(in: &cancellables)
     }
 
-    // MARK: - Launch at Login
-
     private func setupLaunchAtLoginMonitoring() {
         isLaunchAtLoginEnabled = LaunchAtLoginManager.shared.isEnabled
-
-        // Auto-enable unless user has explicitly disabled it
         let userDisabled = UserDefaults.standard.bool(forKey: SettingsKey.launchAtLoginUserDisabled)
         if !userDisabled, !isLaunchAtLoginEnabled {
             autoEnableLaunchAtLogin()
         }
 
-        // Replaces polling timer that caused backgroundtaskmanagementd spam (#351)
         NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification,
             object: nil,
@@ -453,7 +399,6 @@ class AppState: ObservableObject {
             refreshLaunchAtLoginStatus()
             requiresManualLaunchAtLogin = false
         } catch {
-            // Auto-enable failed, will retry on next launch
             requiresManualLaunchAtLogin = true
         }
     }
@@ -463,7 +408,6 @@ class AppState: ObservableObject {
         if newStatus != isLaunchAtLoginEnabled {
             isLaunchAtLoginEnabled = newStatus
         }
-        // Clear manual requirement flag if now enabled
         if isLaunchAtLoginEnabled {
             requiresManualLaunchAtLogin = false
         }
@@ -474,7 +418,6 @@ class AppState: ObservableObject {
             try LaunchAtLoginManager.shared.enable()
             refreshLaunchAtLoginStatus()
             requiresManualLaunchAtLogin = false
-            // Clear user disabled flag when user explicitly enables
             UserDefaults.standard.set(false, forKey: SettingsKey.launchAtLoginUserDisabled)
         } catch {
             requiresManualLaunchAtLogin = true
@@ -486,10 +429,8 @@ class AppState: ObservableObject {
         do {
             try LaunchAtLoginManager.shared.disable()
             refreshLaunchAtLoginStatus()
-            // Track that user explicitly disabled
             UserDefaults.standard.set(true, forKey: SettingsKey.launchAtLoginUserDisabled)
         } catch {
-            // If disable fails, open settings for manual action
             openLoginItemsSettings()
         }
     }
@@ -508,11 +449,9 @@ class AppState: ObservableObject {
         }
     }
 
-    // MARK: - Per-App Mode
-
     func savePerAppMode(bundleId: String, enabled: Bool) {
         var modes = UserDefaults.standard.dictionary(forKey: SettingsKey.perAppModes) as? [String: Bool] ?? [:]
-        modes[bundleId] = enabled // Store both ON and OFF so hasPerAppMode works correctly
+        modes[bundleId] = enabled
         UserDefaults.standard.set(modes, forKey: SettingsKey.perAppModes)
     }
 
@@ -540,8 +479,6 @@ class AppState: ObservableObject {
         currentMethod = method
     }
 
-    // MARK: - Shortcuts
-
     func syncShortcutsToEngine(_ validShortcuts: [ShortcutItem]? = nil) {
         let toSync = validShortcuts ?? shortcuts.filter { !$0.key.isEmpty && !$0.value.isEmpty }
         RustBridge.syncShortcuts(toSync.map { ($0.key, $0.value, $0.isEnabled) })
@@ -550,7 +487,6 @@ class AppState: ObservableObject {
     func exportShortcuts() -> String {
         var lines = [";TuiGoAI - Bảng gõ tắt"]
         for shortcut in shortcuts where !shortcut.key.isEmpty {
-            // Issue #343: Escape newlines in export so format stays one-entry-per-line
             let escapedValue = shortcut.value.replacingOccurrences(of: "\\", with: "\\\\")
                 .replacingOccurrences(of: "\n", with: "\\n")
                 .replacingOccurrences(of: "\r", with: "\\r")
@@ -569,7 +505,6 @@ class AppState: ObservableObject {
             let trigger = String(trimmed[..<colonIndex]).trimmingCharacters(in: .whitespaces)
             let rawValue = String(trimmed[trimmed.index(after: colonIndex)...]).trimmingCharacters(in: .whitespaces)
             guard !trigger.isEmpty else { continue }
-            // Issue #343: Unescape \\n → newline, \\\\ → backslash
             let replacement = Self.unescapeShortcutValue(rawValue)
             if let idx = shortcuts.firstIndex(where: { $0.key == trigger }) {
                 shortcuts[idx].value = replacement
@@ -582,7 +517,6 @@ class AppState: ObservableObject {
         return imported
     }
 
-    /// Unescape shortcut value: \\n → newline, \\\\ → backslash
     private static func unescapeShortcutValue(_ value: String) -> String {
         var result = ""
         var chars = value.makeIterator()
@@ -615,257 +549,39 @@ struct ShortcutItem: Identifiable, Codable {
     var isEnabled: Bool = true
 }
 
-// MARK: - View Modifiers
-
-struct CardBackground: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .background(RoundedRectangle(cornerRadius: 10).fill(Color(NSColor.controlBackgroundColor).opacity(0.5)))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(NSColor.separatorColor).opacity(0.5), lineWidth: 0.5))
-    }
-}
-
-extension View {
-    func cardBackground() -> some View {
-        modifier(CardBackground())
-    }
-}
-
-// MARK: - Reusable Components
-
-struct SettingsRow<Content: View>: View {
-    @ViewBuilder let content: Content
-    var body: some View {
-        HStack { content }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-    }
-}
-
-struct SettingsToggleRow: View {
-    let title: String
-    let subtitle: String?
-    let indented: Bool
-    @Binding var isOn: Bool
-
-    init(_ title: String, subtitle: String? = nil, indented: Bool = false, isOn: Binding<Bool>) {
-        self.title = title
-        self.subtitle = subtitle
-        self.indented = indented
-        _isOn = isOn
-    }
-
-    var body: some View {
-        SettingsRow {
-            HStack(spacing: 6) {
-                if indented {
-                    Image(systemName: "arrow.turn.down.right")
-                        .font(.system(size: 10))
-                        .foregroundColor(Color(NSColor.tertiaryLabelColor))
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.system(size: 13))
-                    if let subtitle {
-                        Text(subtitle).font(.system(size: 11)).foregroundColor(Color(NSColor.secondaryLabelColor))
-                    }
-                }
-            }
-            Spacer()
-            Toggle("", isOn: $isOn).toggleStyle(.switch).labelsHidden()
-        }
-    }
-}
-
-struct KeyCap: View {
-    let text: String
-
-    private var displayText: String {
-        switch text {
-        // Modifiers
-        case "⌃": "⌃ control"
-        case "⌥": "⌥ option"
-        case "⇧": "⇧ shift"
-        case "⌘": "⌘ command"
-        case "fn": "fn"
-        // Special keys
-        case "Esc", "⎋": "⎋ esc"
-        case "Tab", "⇥": "⇥ tab"
-        case "Space", "␣": "␣ space"
-        case "Return", "↩": "↩ return"
-        case "Delete", "⌫": "⌫ delete"
-        default: text
-        }
-    }
-
-    var body: some View {
-        Text(displayText)
-            .font(.system(size: 11, weight: .medium))
-            .foregroundColor(Color(NSColor.secondaryLabelColor))
-            .lineLimit(1)
-            .fixedSize() // Keep "⌃ control" on one line even when the row is width-constrained
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(RoundedRectangle(cornerRadius: 4).fill(Color(NSColor.controlBackgroundColor).opacity(0.8)))
-            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color(NSColor.separatorColor).opacity(0.5), lineWidth: 0.5))
-    }
-}
-
-// MARK: - Sheet Components
-
-struct SheetHeader: View {
-    let title: String
-    let subtitle: String?
-
-    init(_ title: String, subtitle: String? = nil) {
-        self.title = title
-        self.subtitle = subtitle
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.system(size: 15, weight: .semibold))
-            if let subtitle {
-                Text(subtitle).font(.system(size: 11)).foregroundColor(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-    }
-}
-
-struct SheetToolbar<Actions: View>: View {
-    @Environment(\.dismiss) private var dismiss
-    let actions: Actions?
-
-    init(@ViewBuilder actions: () -> Actions) {
-        self.actions = actions()
-    }
-
-    init() where Actions == EmptyView {
-        actions = nil
-    }
-
-    var body: some View {
-        HStack(spacing: 12) {
-            if let actions {
-                actions
-            }
-            Spacer()
-            Button("Xong") { dismiss() }
-                .keyboardShortcut(.escape, modifiers: [])
-        }
-        .font(.system(size: 12))
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-    }
-}
-
-struct ClickableTextField: NSViewRepresentable {
-    @Binding var text: String
-
-    func makeNSView(context: Context) -> NSTextField {
-        let textField = NSTextField()
-        textField.isBordered = false
-        textField.drawsBackground = false
-        textField.focusRingType = .none
-        textField.font = .systemFont(ofSize: 13)
-        textField.delegate = context.coordinator
-        textField.cell?.lineBreakMode = .byTruncatingTail
-        return textField
-    }
-
-    func updateNSView(_ nsView: NSTextField, context _: Context) {
-        if nsView.stringValue != text {
-            nsView.stringValue = text
-        }
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    class Coordinator: NSObject, NSTextFieldDelegate {
-        var parent: ClickableTextField
-        init(_ parent: ClickableTextField) {
-            self.parent = parent
-        }
-
-        func controlTextDidChange(_ obj: Notification) {
-            guard let textField = obj.object as? NSTextField else { return }
-            parent.text = textField.stringValue
-        }
-    }
-}
-
-struct DeleteButton: View {
-    let action: () -> Void
-    @State private var hovered = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "trash")
-                .font(.system(size: 11))
-                .foregroundColor(hovered ? Color(NSColor.secondaryLabelColor) : Color(NSColor.tertiaryLabelColor))
-        }
-        .buttonStyle(.borderless)
-        .onHover { hovered = $0 }
-        .help("Xoá")
-    }
-}
-
-struct VisualEffectBackground: NSViewRepresentable {
-    var material: NSVisualEffectView.Material = .sidebar
-    var blendingMode: NSVisualEffectView.BlendingMode = .behindWindow
-
-    func makeNSView(context _: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.material = material
-        view.blendingMode = blendingMode
-        view.state = .active
-        return view
-    }
-
-    func updateNSView(_ nsView: NSVisualEffectView, context _: Context) {
-        nsView.material = material
-        nsView.blendingMode = blendingMode
-    }
-}
-
 // MARK: - Main Settings View
 
 struct MainSettingsView: View {
     @ObservedObject private var appState = AppState.shared
-    @State private var selectedPage: NavigationPage = .settings
-    @Environment(\.colorScheme) private var colorScheme
+    @State private var selectedPage: NavigationPage = .overview
 
     var body: some View {
         HStack(spacing: 0) {
+            // Sidebar
             ZStack {
-                VisualEffectBackground(material: .sidebar, blendingMode: .behindWindow)
+                Theme.sidebar
                 sidebar
             }
-            .frame(width: 200)
+            .frame(width: 195)
+            .overlay(
+                Rectangle()
+                    .fill(Theme.divider)
+                    .frame(width: 0.8),
+                alignment: .trailing
+            )
 
+            // Content
             ZStack {
-                if colorScheme == .dark {
-                    VisualEffectBackground(material: .headerView, blendingMode: .behindWindow)
-                } else {
-                    Color(NSColor.windowBackgroundColor)
-                }
+                Theme.contentBackground
                 content
             }
         }
         .ignoresSafeArea()
-        .frame(width: 820, height: 700)
+        .frame(width: 820, height: 690)
+        .tint(Theme.accent)
         .onReceive(NotificationCenter.default.publisher(for: .showSettingsPage)) { notification in
             if let page = notification.object as? NavigationPage {
                 selectedPage = page
-            }
-        }
-        .onChange(of: appState.advancedMode) { newValue in
-            if !newValue, selectedPage == .advanced {
-                selectedPage = .settings
             }
         }
     }
@@ -874,95 +590,55 @@ struct MainSettingsView: View {
 
     private var sidebar: some View {
         VStack(spacing: 0) {
-            VStack(spacing: 12) {
-                Image(nsImage: AppMetadata.logo).resizable().frame(width: 96, height: 96)
-                Text(AppMetadata.name).font(.system(size: 20, weight: .bold))
+            // Brand header
+            VStack(spacing: 10) {
+                Image(nsImage: AppMetadata.logo)
+                    .resizable()
+                    .frame(width: 76, height: 76)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Theme.divider, lineWidth: 0.8)
+                    )
+
+                Text(AppMetadata.name)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(Theme.textPrimary)
+
                 UpdateBadgeView()
             }
-            .padding(.top, 40)
+            .padding(.top, 32)
+            .padding(.bottom, 24)
 
-            Spacer()
-
-            VStack(spacing: 4) {
-                ForEach(NavigationPage.allCases.filter { $0 != .advanced || appState.advancedMode }, id: \.self) { page in
-                    NavButton(page: page, isSelected: selectedPage == page) { selectedPage = page }
+            // Navigation tabs
+            VStack(spacing: 3) {
+                ForEach(NavigationPage.allCases, id: \.self) { page in
+                    NavButton(page: page, isSelected: selectedPage == page) {
+                        selectedPage = page
+                    }
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 20)
+            .padding(.horizontal, 10)
+
+            Spacer()
         }
     }
 
-    // MARK: - Content
+    // MARK: - Content Router
 
     @ViewBuilder
     private var content: some View {
         switch selectedPage {
-        case .settings:
-            ScrollView(showsIndicators: false) {
-                SettingsPageView(appState: appState).padding(28)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .overview:
+            OverviewPageView(appState: appState)
+        case .typing:
+            TypingPageView(appState: appState)
         case .ai:
             AISettingsView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        case .advanced:
-            AdvancedSettingsView(appState: appState).padding(28)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .apps:
+            AppsSettingsView(appState: appState)
         case .about:
-            AboutPageView().padding(28).frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-}
-
-// MARK: - Update Badge
-
-struct UpdateBadgeView: View {
-    @ObservedObject private var updateManager = UpdateManager.shared
-    @State private var hovered = false
-    @State private var rotation: Double = 0
-
-    var body: some View {
-        HStack(spacing: 3) {
-            Text("v\(AppMetadata.version)")
-            if updateManager.isChecking {
-                Image(systemName: "arrow.clockwise.circle.fill")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                    .rotationEffect(.degrees(rotation))
-                    .onAppear { withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) { rotation = 360 } }
-                    .onDisappear { rotation = 0 }
-                Text("Kiểm tra")
-            } else if updateManager.isReadyToInstall {
-                Image(systemName: "arrow.uturn.forward.circle.fill").font(.system(size: 12)).foregroundColor(.orange)
-                Text("Khởi động lại")
-            } else if updateManager.updateAvailable {
-                Image(systemName: "arrow.down.circle.fill").font(.system(size: 12)).foregroundColor(.blue)
-                Text("Đang tải...")
-            } else {
-                Image(systemName: "checkmark.circle.fill").font(.system(size: 12)).foregroundColor(.green)
-                Text("Mới nhất")
-            }
-        }
-        .font(.system(size: 11))
-        .foregroundColor(Color(NSColor.tertiaryLabelColor))
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Capsule().fill(hovered ? Color(NSColor.controlBackgroundColor).opacity(0.5) : Color.clear))
-        .onHover { h in
-            hovered = h
-            if h {
-                NSCursor.pointingHand.push()
-            } else {
-                NSCursor.pop()
-            }
-        }
-        .onTapGesture {
-            if updateManager.isReadyToInstall {
-                updateManager.restartToUpdate()
-            } else {
-                updateManager.checkForUpdatesManually()
-            }
+            AboutPageView(appState: appState)
         }
     }
 }
@@ -976,151 +652,619 @@ struct NavButton: View {
     @State private var hovered = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 9) {
             Image(systemName: page.icon)
-                .font(.system(size: 14))
-                .foregroundColor(isSelected ? Color(NSColor.labelColor) : Color(NSColor.secondaryLabelColor))
-                .frame(width: 20)
+                .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                .foregroundColor(isSelected ? Theme.accent : Theme.textSecondary)
+                .frame(width: 18)
+
             Text(page.rawValue)
-                .font(.system(size: 13))
-                .foregroundColor(isSelected ? Color(NSColor.labelColor) : Color(NSColor.secondaryLabelColor))
+                .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                .foregroundColor(isSelected ? Theme.textPrimary : Theme.textSecondary)
+
             Spacer()
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color(NSColor.controlBackgroundColor).opacity(0.6) :
-                    hovered ? Color(NSColor.controlBackgroundColor).opacity(0.4) : Color.clear)
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isSelected ? Theme.card : (hovered ? Theme.rowHover : Color.clear))
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(isSelected ? Theme.divider : Color.clear, lineWidth: 0.8)
+        )
+        .overlay(alignment: .leading) {
+            if isSelected {
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(Theme.accent)
+                    .frame(width: 3, height: 16)
+                    .padding(.leading, 3)
+            }
+        }
         .contentShape(Rectangle())
         .onHover { hovered = $0 }
         .onTapGesture { action() }
     }
 }
 
-// MARK: - Settings Page
+// MARK: - Update Badge View
 
-struct SettingsPageView: View {
+struct UpdateBadgeView: View {
+    @ObservedObject private var updateManager = UpdateManager.shared
+    @State private var hovered = false
+    @State private var rotation: Double = 0
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text("v\(AppMetadata.version)")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(Theme.textSecondary)
+
+            if updateManager.isChecking {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 10))
+                    .foregroundColor(Theme.textSecondary)
+                    .rotationEffect(.degrees(rotation))
+                    .onAppear {
+                        withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) { rotation = 360 }
+                    }
+                    .onDisappear { rotation = 0 }
+            } else if updateManager.isReadyToInstall {
+                Image(systemName: "arrow.uturn.forward.circle.fill")
+                    .font(.system(size: 10))
+                    .foregroundColor(Theme.warning)
+            } else if updateManager.updateAvailable {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.system(size: 10))
+                    .foregroundColor(Theme.accent)
+            } else {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 10))
+                    .foregroundColor(Theme.success)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3.5)
+        .background(
+            Capsule()
+                .fill(Theme.card)
+        )
+        .overlay(
+            Capsule()
+                .stroke(Theme.divider, lineWidth: 0.8)
+        )
+        .onHover { h in hovered = h }
+        .onTapGesture {
+            if updateManager.isReadyToInstall {
+                updateManager.restartToUpdate()
+            } else {
+                updateManager.checkForUpdatesManually()
+            }
+        }
+    }
+}
+
+// MARK: - Tab 1: Overview Page View
+
+struct OverviewPageView: View {
     @ObservedObject var appState: AppState
-    @State private var isRecordingShortcut = false
-    @State private var isRecordingSecondaryShortcut = false
-    @State private var isRecordingRestoreShortcut = false
+    @StateObject private var ollama = OllamaService.shared
+    @State private var aiConfig = AIService.shared.loadConfig()
+    @State private var isRecordingToggle = false
+    @State private var isRecordingAIToggle = false
+    @State private var isRecordingAccept = false
+    @State private var aiToggleShortcut = OverviewPageView.loadAIToggleShortcut()
+    @State private var aiAcceptShortcut = OverviewPageView.loadAIAcceptShortcut()
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 18) {
+                // Header
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Tổng quan")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(Theme.textPrimary)
+                    Text("Xem nhanh trạng thái hoạt động và các phím tắt chính của TuiGoAI.")
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.textSecondary)
+                }
+                .padding(.bottom, 4)
+
+                // Secure Input warning if blocked
+                if appState.shouldShowSecureInputWarning {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(Theme.warning)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Bộ gõ đang tạm dừng")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Theme.textPrimary)
+                            Text(SecureInputPresentation.warningMessage(holderName: appState.secureInputHolderName))
+                                .font(.system(size: 11))
+                                .foregroundColor(Theme.textSecondary)
+                        }
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.warning.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Theme.warning.opacity(0.35), lineWidth: 0.8)
+                    )
+                }
+
+                // Trạng thái hoạt động
+                VStack(alignment: .leading, spacing: 6) {
+                    SettingSectionHeader(title: "Trạng thái hoạt động")
+
+                    VStack(spacing: 0) {
+                        SettingToggleRow(
+                            title: "Bộ gõ tiếng Việt",
+                            description: "Xử lý Telex/VNI bằng lõi Rust độc lập, độ trễ tiệm cận 0ms",
+                            isOn: $appState.isEnabled
+                        )
+
+                        Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                        SettingRow(
+                            title: "AI Copilot",
+                            description: "Gợi ý hoàn thành câu trực tiếp tại vị trí con trỏ văn bản"
+                        ) {
+                            Toggle("", isOn: Binding(
+                                get: { aiConfig.isEnabled },
+                                set: { newValue in
+                                    aiConfig.isEnabled = newValue
+                                    AIService.shared.saveConfig(aiConfig)
+                                    if !newValue { GhostTextManager.shared.dismiss() }
+                                }
+                            ))
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .tint(Theme.accent)
+                        }
+
+                        Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                        SettingRow(
+                            title: "Dịch vụ Ollama",
+                            description: ollama.isReachable ? "localhost:11434 · Sẵn sàng sinh văn bản" : "Chưa kết nối Ollama trên máy"
+                        ) {
+                            HStack(spacing: 8) {
+                                Circle()
+                                    .fill(ollama.isReachable ? Theme.success : Theme.warning)
+                                    .frame(width: 8, height: 8)
+
+                                Text(ollama.isReachable ? "Đang chạy" : "Chưa bật")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(ollama.isReachable ? Theme.success : Theme.warning)
+
+                                Button("Làm mới") {
+                                    Task { await ollama.refresh() }
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(Theme.accent)
+                            }
+                        }
+                    }
+                    .flatCard()
+                }
+
+                // Phím tắt chính
+                VStack(alignment: .leading, spacing: 6) {
+                    SettingSectionHeader(title: "Phím tắt chính")
+
+                    VStack(spacing: 0) {
+                        ShortcutRecorderRow(
+                            shortcut: $appState.toggleShortcut,
+                            isRecording: $isRecordingToggle,
+                            title: "Bật / tắt bộ gõ",
+                            subtitle: "Chuyển nhanh giữa chế độ gõ tiếng Việt và tiếng Anh"
+                        )
+
+                        Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                        ShortcutRecorderRow(
+                            shortcut: $aiToggleShortcut,
+                            isRecording: $isRecordingAIToggle,
+                            title: "Bật / tắt AI Copilot",
+                            subtitle: "Tạm ngưng hoặc kích hoạt lại gợi ý inline của AI"
+                        )
+
+                        Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                        ShortcutRecorderRow(
+                            shortcut: $aiAcceptShortcut,
+                            isRecording: $isRecordingAccept,
+                            title: "Nhận gợi ý AI",
+                            subtitle: "Chấp nhận và chèn câu gợi ý của AI vào văn bản (mặc định Tab)"
+                        )
+                    }
+                    .flatCard()
+                }
+
+                // Hệ thống
+                VStack(alignment: .leading, spacing: 6) {
+                    SettingSectionHeader(title: "Hệ thống")
+
+                    VStack(spacing: 0) {
+                        SettingToggleRow(
+                            title: "Khởi động cùng macOS",
+                            description: "Tự động chạy TuiGoAI trong thanh menu khi mở máy",
+                            isOn: Binding(
+                                get: { appState.isLaunchAtLoginEnabled },
+                                set: { appState.toggleLaunchAtLogin($0) }
+                            )
+                        )
+                    }
+                    .flatCard()
+                }
+
+                Spacer(minLength: 10)
+            }
+            .padding(26)
+        }
+        .background(Theme.contentBackground)
+        .onAppear {
+            aiConfig = AIService.shared.loadConfig()
+            Task { await ollama.refresh() }
+        }
+        .onChange(of: aiToggleShortcut) { shortcut in
+            if let data = try? JSONEncoder().encode(shortcut) {
+                UserDefaults.standard.set(data, forKey: GhostTextManager.toggleShortcutKey)
+            }
+        }
+        .onChange(of: aiAcceptShortcut) { shortcut in
+            if let data = try? JSONEncoder().encode(shortcut) {
+                UserDefaults.standard.set(data, forKey: GhostTextManager.acceptShortcutKey)
+            }
+        }
+    }
+
+    private static func loadAIToggleShortcut() -> KeyboardShortcut {
+        guard let data = UserDefaults.standard.data(forKey: GhostTextManager.toggleShortcutKey),
+              let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
+        else {
+            return KeyboardShortcut(keyCode: 0x31, modifiers: CGEventFlags.maskControl.union(.maskAlternate).rawValue)
+        }
+        return shortcut
+    }
+
+    private static func loadAIAcceptShortcut() -> KeyboardShortcut {
+        guard let data = UserDefaults.standard.data(forKey: GhostTextManager.acceptShortcutKey),
+              let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
+        else {
+            return KeyboardShortcut(keyCode: 0x30, modifiers: 0)
+        }
+        return shortcut
+    }
+}
+
+// MARK: - Tab 2: Typing Page View
+
+struct TypingPageView: View {
+    @ObservedObject var appState: AppState
+    @State private var isRecordingSecondary = false
+    @State private var isRecordingRestore = false
     @State private var showShortcutsSheet = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            if appState.shouldShowSecureInputWarning {
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "lock.fill")
-                        .foregroundColor(.orange)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Bộ gõ đang tạm dừng")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text(SecureInputPresentation.warningMessage(holderName: appState.secureInputHolderName))
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 18) {
+                // Header
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Bộ gõ")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(Theme.textPrimary)
+                    Text("Cấu hình kiểu gõ, quy tắc xử lý dấu tiếng Việt và danh sách từ gõ tắt.")
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.textSecondary)
+                }
+                .padding(.bottom, 4)
+
+                // Kiểu gõ & Phục hồi
+                VStack(alignment: .leading, spacing: 6) {
+                    SettingSectionHeader(title: "Kiểu gõ & Phục hồi")
+
+                    VStack(spacing: 0) {
+                        SettingRow(
+                            title: "Kiểu gõ",
+                            description: "Chọn phương thức bỏ dấu tiếng Việt tiêu chuẩn"
+                        ) {
+                            Picker("", selection: $appState.currentMethod) {
+                                ForEach(InputMode.allCases, id: \.self) {
+                                    Text($0.name).tag($0)
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(width: 100)
+                        }
+
+                        if appState.currentMethod == .telex {
+                            Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                            SettingToggleRow(
+                                title: "Gõ W thành Ư",
+                                description: "Gõ phím w để tạo ký tự ư khi đứng riêng hoặc đầu từ",
+                                indented: true,
+                                isOn: $appState.autoWShortcut
+                            )
+
+                            Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                            SettingToggleRow(
+                                title: "Gõ [ ] thành Ơ Ư",
+                                description: "Dùng phím mở và đóng ngoặc vuông để gõ chữ ơ và ư",
+                                indented: true,
+                                isOn: $appState.bracketShortcut
+                            )
+
+                            Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                            SettingToggleRow(
+                                title: "Tự khôi phục tiếng Anh",
+                                description: "Tự động hoàn lại từ tiếng Anh khi nhấn Space mà không nuốt phím",
+                                indented: true,
+                                isOn: $appState.englishAutoRestore
+                            )
+                        }
+                    }
+                    .flatCard()
+                }
+
+                // Quy tắc chính tả
+                VStack(alignment: .leading, spacing: 6) {
+                    SettingSectionHeader(title: "Quy tắc chính tả")
+
+                    VStack(spacing: 0) {
+                        SettingToggleRow(
+                            title: "Đặt dấu kiểu mới",
+                            description: "Đặt dấu thanh ở âm chính mới: oà thay vì òa, uý thay vì úy",
+                            isOn: $appState.modernTone
+                        )
+
+                        Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                        SettingToggleRow(
+                            title: "Cho phép phụ âm ngoại",
+                            description: "Chấp nhận các chữ cái z, w, j, f ở đầu từ mà không làm mất dấu",
+                            isOn: $appState.allowForeignConsonants
+                        )
+
+                        Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                        SettingToggleRow(
+                            title: "Tự viết hoa đầu câu",
+                            description: "Tự động viết hoa chữ cái đầu tiên sau dấu chấm câu",
+                            isOn: $appState.autoCapitalize
+                        )
+                    }
+                    .flatCard()
+                }
+
+                // Phím tắt bổ trợ & Âm thanh
+                VStack(alignment: .leading, spacing: 6) {
+                    SettingSectionHeader(title: "Phím tắt bổ trợ & Âm thanh")
+
+                    VStack(spacing: 0) {
+                        ShortcutRecorderRow(
+                            shortcut: $appState.secondaryToggleShortcut,
+                            isRecording: $isRecordingSecondary,
+                            title: "Phím tắt bật / tắt thứ hai",
+                            subtitle: "Hữu ích khi dùng bàn phím ngoài không có phím fn",
+                            isEnabled: $appState.secondaryToggleShortcutEnabled,
+                            duplicateOf: appState.toggleShortcut
+                        )
+
+                        Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                        RestoreShortcutRecorderRow(
+                            shortcut: $appState.restoreShortcut,
+                            isEnabled: $appState.restoreShortcutEnabled,
+                            isRecording: $isRecordingRestore
+                        )
+
+                        Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                        SettingToggleRow(
+                            title: "Âm thanh khi bật / tắt",
+                            description: "Phát âm thanh phản hồi nhẹ khi chuyển trạng thái bộ gõ",
+                            isOn: $appState.soundEnabled
+                        )
+                    }
+                    .flatCard()
+                }
+
+                // Bảng từ gõ tắt
+                VStack(alignment: .leading, spacing: 6) {
+                    SettingSectionHeader(title: "Từ gõ tắt")
+
+                    VStack(spacing: 0) {
+                        SettingRow(
+                            title: "Bảng từ gõ tắt",
+                            description: appState.shortcuts.isEmpty
+                                ? "Chưa có từ viết tắt nào được thiết lập"
+                                : "\(appState.shortcuts.filter(\.isEnabled).count) / \(appState.shortcuts.count) từ gõ tắt đang được kích hoạt"
+                        ) {
+                            Button("Quản lý bảng gõ tắt...") {
+                                showShortcutsSheet = true
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(Theme.accent)
+                        }
+                    }
+                    .flatCard()
+                }
+
+                Spacer(minLength: 10)
+            }
+            .padding(26)
+        }
+        .background(Theme.contentBackground)
+        .sheet(isPresented: $showShortcutsSheet) {
+            ShortcutsSheet(appState: appState)
+        }
+    }
+}
+
+// MARK: - Tab 5: About Page View
+
+struct AboutPageView: View {
+    @ObservedObject var appState: AppState
+    @ObservedObject private var updateManager = UpdateManager.shared
+    @State private var logEnabled = FileManager.default.fileExists(atPath: "/tmp/gonhanh_debug.log") || FileManager.default.fileExists(atPath: "/tmp/tuigoai_debug.log")
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 18) {
+                // Header
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Giới thiệu")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(Theme.textPrimary)
+                    Text("Thông tin phiên bản, bản quyền và chẩn đoán hệ thống.")
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.textSecondary)
+                }
+                .padding(.bottom, 4)
+
+                // Thẻ thông tin ứng dụng trung tâm
+                VStack(spacing: 14) {
+                    Image(nsImage: AppMetadata.logo)
+                        .resizable()
+                        .frame(width: 72, height: 72)
+                        .clipShape(RoundedRectangle(cornerRadius: 15))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 15)
+                                .stroke(Theme.divider, lineWidth: 0.8)
+                        )
+
+                    VStack(spacing: 3) {
+                        Text(AppMetadata.name)
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(Theme.textPrimary)
+
+                        Text("Phiên bản v\(AppMetadata.version) (Build \(AppMetadata.buildNumber))")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Theme.textSecondary)
+
+                        Text("Bộ gõ tiếng Việt hiện đại tích hợp AI Copilot cho macOS")
+                            .font(.system(size: 12))
+                            .foregroundColor(Theme.textSecondary)
+                            .padding(.top, 2)
+                    }
+
+                    // Links
+                    HStack(spacing: 12) {
+                        if let repoURL = URL(string: AppMetadata.repository) {
+                            Link(destination: repoURL) {
+                                Label("GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(Theme.accent)
+                        }
+
+                        if let issuesURL = URL(string: AppMetadata.issuesURL) {
+                            Link(destination: issuesURL) {
+                                Label("Báo lỗi", systemImage: "ant")
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(Theme.accent)
+                        }
+
+                        if let authorURL = URL(string: AppMetadata.authorLinkedin) {
+                            Link(destination: authorURL) {
+                                Label("Tác giả: Ron Ng", systemImage: "person")
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(Theme.accent)
+                        }
+                    }
+                    .padding(.top, 4)
+
+                    Divider().overlay(Theme.divider).padding(.horizontal, 20)
+
+                    // Acknowledgments
+                    VStack(spacing: 2) {
+                        Text("Kế thừa nền tảng từ GoNhanh (Kha Phan, BSD-3-Clause)")
+                            .font(.system(size: 10))
+                            .foregroundColor(Theme.textSecondary)
+                        Text("Thuật toán Autocomplete tham khảo từ KeyType (Xi Nai Lai, MIT License)")
+                            .font(.system(size: 10))
+                            .foregroundColor(Theme.textSecondary)
+                        Text("Phát hành dưới giấy phép mã nguồn mở BSD-3-Clause")
+                            .font(.system(size: 10))
+                            .foregroundColor(Theme.textSecondary)
                     }
                 }
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.orange.opacity(0.10))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.orange.opacity(0.30), lineWidth: 1)
-                )
-            }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+                .padding(.horizontal, 16)
+                .flatCard()
 
-            // Bộ gõ
-            VStack(spacing: 0) {
-                SettingsToggleRow("Bộ gõ tiếng Việt", isOn: $appState.isEnabled)
-                Divider().padding(.leading, 12)
-                inputMethodRow
-                if appState.currentMethod == .telex {
-                    Divider().padding(.leading, 12)
-                    SettingsToggleRow("Gõ W thành Ư", indented: true, isOn: $appState.autoWShortcut)
-                    Divider().padding(.leading, 12)
-                    SettingsToggleRow("Gõ [ ] thành Ơ Ư", indented: true, isOn: $appState.bracketShortcut)
-                    Divider().padding(.leading, 12)
-                    englishAutoRestoreRow
+                // Cập nhật ứng dụng
+                VStack(alignment: .leading, spacing: 6) {
+                    SettingSectionHeader(title: "Cập nhật ứng dụng")
+
+                    VStack(spacing: 0) {
+                        SettingRow(
+                            title: "Kiểm tra phiên bản mới",
+                            description: updateManager.updateAvailable
+                                ? "Đã có bản cập nhật mới sẵn sàng tải về"
+                                : "TuiGoAI tự động kiểm tra bản phát hành mới định kỳ"
+                        ) {
+                            Button(updateManager.isReadyToInstall ? "Khởi động lại để cập nhật" : "Kiểm tra ngay") {
+                                if updateManager.isReadyToInstall {
+                                    updateManager.restartToUpdate()
+                                } else {
+                                    updateManager.checkForUpdatesManually()
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(Theme.accent)
+                        }
+                    }
+                    .flatCard()
                 }
-            }
-            .cardBackground()
 
-            // Phím tắt
-            VStack(spacing: 0) {
-                ShortcutRecorderRow(shortcut: $appState.toggleShortcut,
-                                    isRecording: $isRecordingShortcut)
-                Divider().padding(.leading, 12)
-                ShortcutRecorderRow(shortcut: $appState.secondaryToggleShortcut,
-                                    isRecording: $isRecordingSecondaryShortcut,
-                                    title: "Phím tắt bật/tắt thứ hai",
-                                    subtitle: "Khi bàn phím rời không có fn",
-                                    isEnabled: $appState.secondaryToggleShortcutEnabled,
-                                    duplicateOf: appState.toggleShortcut)
-                Divider().padding(.leading, 12)
-                RestoreShortcutRecorderRow(
-                    shortcut: $appState.restoreShortcut,
-                    isEnabled: $appState.restoreShortcutEnabled,
-                    isRecording: $isRecordingRestoreShortcut
-                )
-            }
-            .cardBackground()
+                // Chẩn đoán & Bộ nhớ
+                VStack(alignment: .leading, spacing: 6) {
+                    SettingSectionHeader(title: "Chẩn đoán & Hiệu năng")
 
-            // Quy tắc gõ
-            VStack(spacing: 0) {
-                SettingsToggleRow("Đặt dấu kiểu mới", subtitle: "oà thay vì òa, uý thay vì úy", isOn: $appState.modernTone)
-                Divider().padding(.leading, 12)
-                SettingsToggleRow("Cho phép phụ âm ngoại", subtitle: "z, w, j, f làm phụ âm đầu", isOn: $appState.allowForeignConsonants)
-                Divider().padding(.leading, 12)
-                AutoCapitalizeRow(appState: appState)
-            }
-            .cardBackground()
+                    VStack(spacing: 0) {
+                        SettingRow(
+                            title: "Ghi log chẩn đoán (Debug Log)",
+                            description: "Ghi nhật ký chi tiết xử lý phím vào /tmp/tuigoai_debug.log"
+                        ) {
+                            LogToggleButton(isEnabled: $logEnabled)
+                        }
 
-            // Mở rộng
-            VStack(spacing: 0) {
-                shortcutsRow
-                Divider().padding(.leading, 12)
-                SettingsToggleRow("Nhớ trạng thái theo app", subtitle: "Tự bật/tắt khi chuyển ứng dụng", isOn: $appState.perAppModeEnabled)
-                Divider().padding(.leading, 12)
-                SettingsToggleRow("Âm thanh khi bật/tắt", isOn: $appState.soundEnabled)
-            }
-            .cardBackground()
+                        Divider().overlay(Theme.divider).padding(.leading, 14)
 
-            // Hệ thống
-            VStack(spacing: 0) {
-                LaunchAtLoginToggleRow(appState: appState)
-                Divider().padding(.leading, 12)
-                SettingsToggleRow("Hiển thị cài đặt nâng cao", isOn: $appState.advancedMode)
-            }
-            .cardBackground()
+                        SettingToggleRow(
+                            title: "Khởi động lại khi đóng cài đặt",
+                            description: "Tự động giải phóng RAM của cửa sổ cài đặt sau khi đóng",
+                            isOn: $appState.restartOnClose
+                        )
 
-            Spacer()
+                        if logEnabled {
+                            Divider().overlay(Theme.divider).padding(.leading, 14)
+                            LogViewerSection()
+                        }
+                    }
+                    .flatCard()
+                }
+
+                Spacer(minLength: 10)
+            }
+            .padding(26)
         }
-        .sheet(isPresented: $showShortcutsSheet) { ShortcutsSheet(appState: appState) }
-    }
-
-    private var inputMethodRow: some View {
-        SettingsRow {
-            Text("Kiểu gõ").font(.system(size: 13))
-            Spacer()
-            Picker("", selection: $appState.currentMethod) {
-                ForEach(InputMode.allCases, id: \.self) { Text($0.name).tag($0) }
-            }
-            .labelsHidden()
-            .frame(width: 100)
-        }
-    }
-
-    private var englishAutoRestoreRow: some View {
-        SettingsToggleRow("Tự khôi phục tiếng Anh", indented: true, isOn: $appState.englishAutoRestore)
-    }
-
-    private var shortcutsRow: some View {
-        ShortcutsRowView(appState: appState) { showShortcutsSheet = true }
+        .background(Theme.contentBackground)
     }
 }
 
@@ -1129,11 +1273,10 @@ struct SettingsPageView: View {
 struct ShortcutsSheet: View {
     @ObservedObject var appState: AppState
 
-    // Form state
     @State private var formKey: String = ""
     @State private var formValue: String = ""
-    @State private var editingId: UUID? = nil // For form editing
-    @State private var selectedIds: Set<UUID> = [] // For table multi-selection
+    @State private var editingId: UUID? = nil
+    @State private var selectedIds: Set<UUID> = []
 
     private var isEditing: Bool {
         editingId != nil
@@ -1152,53 +1295,58 @@ struct ShortcutsSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             SheetHeader("Bảng gõ tắt", subtitle: subtitle)
-            Divider()
+            Divider().overlay(Theme.divider)
             formSection
-            Divider()
+            Divider().overlay(Theme.divider)
             tableContent
-            Divider()
+            Divider().overlay(Theme.divider)
             SheetToolbar {
                 Button(action: importShortcuts) {
                     Label("Nhập", systemImage: "square.and.arrow.down")
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.bordered)
+                .tint(Theme.accent)
+
                 Button(action: exportShortcuts) {
                     Label("Xuất", systemImage: "square.and.arrow.up")
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.bordered)
+                .tint(Theme.accent)
                 .disabled(appState.shortcuts.isEmpty)
             }
         }
-        .frame(width: 460, height: 400)
+        .frame(width: 480, height: 420)
+        .background(Theme.contentBackground)
     }
 
     private var formSection: some View {
         VStack(spacing: 10) {
             HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Viết tắt").font(.system(size: 11)).foregroundColor(.secondary)
+                    Text("Viết tắt").font(.system(size: 11, weight: .medium)).foregroundColor(Theme.textSecondary)
                     TextField("vd: tphcm", text: $formKey)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 120)
                 }
+
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 4) {
-                        Text("Nội dung").font(.system(size: 11)).foregroundColor(.secondary)
-                        Text("(⌥↩ xuống dòng)").font(.system(size: 10)).foregroundColor(Color(NSColor.tertiaryLabelColor))
+                        Text("Nội dung").font(.system(size: 11, weight: .medium)).foregroundColor(Theme.textSecondary)
+                        Text("(⌥↩ xuống dòng)").font(.system(size: 10)).foregroundColor(Theme.textSecondary)
                     }
-                    // Issue #343: TextEditor for multiline replacement (supports newlines)
                     TextEditor(text: $formValue)
                         .font(.system(size: 13))
                         .frame(height: 44)
                         .scrollContentBackground(.hidden)
                         .padding(4)
-                        .background(RoundedRectangle(cornerRadius: 5).fill(Color(NSColor.textBackgroundColor)))
-                        .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color(NSColor.separatorColor).opacity(0.5), lineWidth: 0.5))
+                        .background(Theme.card)
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                        .overlay(RoundedRectangle(cornerRadius: 5).stroke(Theme.divider, lineWidth: 0.8))
                         .overlay(alignment: .topLeading) {
                             if formValue.isEmpty {
                                 Text("vd: Thành phố Hồ Chí Minh")
                                     .font(.system(size: 13))
-                                    .foregroundColor(Color(NSColor.placeholderTextColor))
+                                    .foregroundColor(Theme.textSecondary.opacity(0.6))
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 6)
                                     .allowsHitTesting(false)
@@ -1206,30 +1354,34 @@ struct ShortcutsSheet: View {
                         }
                 }
             }
+
             HStack(spacing: 8) {
                 if isEditing {
                     Button("Huỷ") { clearForm() }
                     Button("Xoá", role: .destructive) { deleteSelected() }
-                        .foregroundColor(.red)
+                        .foregroundColor(Theme.error)
                 }
                 Spacer()
                 Button(isEditing ? "Cập nhật" : "Thêm") { saveForm() }
                     .disabled(!canSave)
+                    .buttonStyle(.borderedProminent)
+                    .tint(Theme.accent)
+                    .foregroundColor(Theme.textOnAccent)
                     .keyboardShortcut(.return, modifiers: [])
             }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
-        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+        .background(Theme.card.opacity(0.5))
     }
 
     @ViewBuilder
     private var tableContent: some View {
         if appState.shortcuts.isEmpty {
             VStack(spacing: 8) {
-                Image(systemName: "text.badge.plus").font(.system(size: 32)).foregroundColor(.secondary)
-                Text("Chưa có từ viết tắt").font(.system(size: 13)).foregroundColor(.secondary)
-                Text("Điền form ở trên để thêm mới").font(.system(size: 11)).foregroundColor(Color(NSColor.tertiaryLabelColor))
+                Image(systemName: "text.badge.plus").font(.system(size: 32)).foregroundColor(Theme.textSecondary)
+                Text("Chưa có từ viết tắt").font(.system(size: 13, weight: .medium)).foregroundColor(Theme.textPrimary)
+                Text("Điền biểu mẫu ở trên để thêm từ mới").font(.system(size: 11)).foregroundColor(Theme.textSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
@@ -1244,6 +1396,7 @@ struct ShortcutsSheet: View {
                         }
                     ))
                     .toggleStyle(.checkbox)
+                    .tint(Theme.accent)
                     .labelsHidden()
                 }
                 .width(24)
@@ -1251,15 +1404,14 @@ struct ShortcutsSheet: View {
                 TableColumn("Viết tắt") { item in
                     Text(item.key)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(item.isEnabled ? .primary : .secondary)
+                        .foregroundColor(item.isEnabled ? Theme.textPrimary : Theme.textSecondary)
                 }
                 .width(min: 80, ideal: 100, max: 140)
 
                 TableColumn("Nội dung") { item in
-                    // Issue #343: Show multiline indicator, display first line in table
                     Text(item.value.contains("\n") ? item.value.replacingOccurrences(of: "\n", with: " ↵ ") : item.value)
                         .font(.system(size: 12))
-                        .foregroundColor(item.isEnabled ? .primary : .secondary)
+                        .foregroundColor(item.isEnabled ? Theme.textPrimary : Theme.textSecondary)
                         .lineLimit(1)
                 }
 
@@ -1271,7 +1423,6 @@ struct ShortcutsSheet: View {
             .tableStyle(.inset(alternatesRowBackgrounds: true))
             .onDeleteCommand { deleteSelected() }
             .onChange(of: selectedIds) { newSelection in
-                // Load single selection into form for editing
                 if newSelection.count == 1, let id = newSelection.first,
                    let item = appState.shortcuts.first(where: { $0.id == id })
                 {
@@ -1297,11 +1448,9 @@ struct ShortcutsSheet: View {
 
     private func saveForm() {
         if let id = editingId, let idx = appState.shortcuts.firstIndex(where: { $0.id == id }) {
-            // Update existing - only key and value, keep isEnabled unchanged
             appState.shortcuts[idx].key = formKey
             appState.shortcuts[idx].value = formValue
         } else {
-            // Add new - default enabled
             appState.shortcuts.append(ShortcutItem(key: formKey, value: formValue, isEnabled: true))
         }
         clearForm()
@@ -1323,16 +1472,14 @@ struct ShortcutsSheet: View {
     }
 
     private func importShortcuts() {
-        // Dispatch panel creation to next run loop to prevent UI blocking
         DispatchQueue.main.async { [weak appState] in
             let panel = NSOpenPanel()
-            panel.title = "Nhập từ viết tắt"
+            panel.title = "Nhập bảng gõ tắt"
             panel.allowedContentTypes = [.plainText]
             panel.allowsMultipleSelection = false
             panel.canChooseDirectories = false
             panel.begin { response in
                 guard response == .OK, let url = panel.url else { return }
-                // Read file on background thread
                 DispatchQueue.global(qos: .userInitiated).async {
                     guard let content = try? String(contentsOf: url, encoding: .utf8) else { return }
                     DispatchQueue.main.async {
@@ -1344,15 +1491,13 @@ struct ShortcutsSheet: View {
     }
 
     private func exportShortcuts() {
-        // Dispatch panel creation to next run loop to prevent UI blocking
         DispatchQueue.main.async { [weak appState] in
             let panel = NSSavePanel()
-            panel.title = "Xuất từ viết tắt"
-            panel.nameFieldStringValue = "gonhanh-shortcuts.txt"
+            panel.title = "Xuất bảng gõ tắt"
+            panel.nameFieldStringValue = "tuigoai-shortcuts.txt"
             panel.allowedContentTypes = [.plainText]
             panel.begin { response in
                 guard response == .OK, let url = panel.url else { return }
-                // Write file on background thread
                 DispatchQueue.global(qos: .userInitiated).async {
                     let content = appState?.exportShortcuts() ?? ""
                     try? content.write(to: url, atomically: true, encoding: .utf8)
@@ -1362,119 +1507,7 @@ struct ShortcutsSheet: View {
     }
 }
 
-// MARK: - About Page
-
-struct AboutPageView: View {
-    var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
-            VStack(spacing: 12) {
-                Image(nsImage: AppMetadata.logo).resizable().frame(width: 80, height: 80)
-                Text(AppMetadata.name).font(.system(size: 20, weight: .bold))
-                Text("Bộ gõ tiếng Việt nhanh và nhẹ").font(.system(size: 13)).foregroundColor(Color(NSColor.secondaryLabelColor))
-                Text("Phiên bản v\(AppMetadata.version)").font(.system(size: 12)).foregroundColor(Color(NSColor.tertiaryLabelColor))
-            }
-            HStack(spacing: 12) {
-                if !AppMetadata.sponsorURL.isEmpty {
-                    AboutLink(icon: "heart.fill", title: "Ủng hộ", url: AppMetadata.sponsorURL, iconColor: .pink)
-                }
-                AboutLink(icon: "ant", title: "Báo lỗi", url: AppMetadata.issuesURL)
-                AboutLink(icon: "chevron.left.forwardslash.chevron.right", title: "GitHub", url: AppMetadata.repository)
-            }
-            Spacer()
-            HStack(spacing: 4) {
-                Text("Phát triển bởi").foregroundColor(Color(NSColor.tertiaryLabelColor))
-                AuthorLink(name: AppMetadata.author, url: AppMetadata.authorLinkedin)
-                Text("và").foregroundColor(Color(NSColor.tertiaryLabelColor))
-                AuthorLink(name: "Cộng đồng", url: "\(AppMetadata.repository)/blob/main/CONTRIBUTORS.md")
-                Text("với tất cả ❤️").foregroundColor(Color(NSColor.tertiaryLabelColor))
-            }
-            .font(.system(size: 12))
-            .padding(.bottom, 12)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-struct AboutLink: View {
-    let icon: String
-    let title: String
-    let url: String
-    var iconColor: Color?
-    @State private var hovered = false
-
-    var body: some View {
-        if let destination = URL(string: url), !url.isEmpty {
-            Link(destination: destination) {
-                VStack(spacing: 6) {
-                    Image(systemName: icon)
-                        .font(.system(size: 18))
-                        .foregroundColor(iconColor)
-                    Text(title).font(.system(size: 11))
-                }
-                .frame(width: 80, height: 60)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Color(NSColor.controlBackgroundColor).opacity(hovered ? 0.8 : 0.5)))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(NSColor.separatorColor).opacity(0.5), lineWidth: 0.5))
-            }
-            .buttonStyle(.plain)
-            .foregroundColor(Color(NSColor.labelColor))
-            .onHover { hovered = $0 }
-        }
-    }
-}
-
-struct AuthorLink: View {
-    let name: String
-    let url: String
-    @State private var hovered = false
-
-    var body: some View {
-        if let destination = URL(string: url), !url.isEmpty {
-            Link(destination: destination) { Text(name).underline(hovered) }
-                .buttonStyle(.plain)
-                .foregroundColor(Color.accentColor)
-                .onHover { hovered = $0 }
-        } else {
-            Text(name)
-                .foregroundColor(Color.accentColor)
-        }
-    }
-}
-
-struct PlatformBadge: View {
-    let title: String
-    let icon: String
-    let url: String
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var hovered = false
-
-    var body: some View {
-        if let destination = URL(string: url), !url.isEmpty {
-            Link(destination: destination) {
-                HStack(spacing: 5) {
-                    Image(systemName: icon)
-                        .font(.system(size: 10))
-                    Text(title)
-                        .font(.system(size: 10, weight: .medium))
-                    Image(systemName: "arrowtriangle.up.fill")
-                        .font(.system(size: 6))
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
-                )
-                .opacity(hovered ? 0.7 : 1.0)
-            }
-            .buttonStyle(.plain)
-            .onHover { hovered = $0 }
-        }
-    }
-}
-
-// MARK: - Shortcut Recorder
+// MARK: - Shortcut Recorder Row
 
 private let systemShortcuts: Set<String> = [
     "⌘Space", "⌘⇥", "⌘Q", "⌘W", "⌘H", "⌘M",
@@ -1485,11 +1518,9 @@ private let systemShortcuts: Set<String> = [
 struct ShortcutRecorderRow: View {
     @Binding var shortcut: KeyboardShortcut
     @Binding var isRecording: Bool
-    var title = "Bật/tắt bộ gõ"
-    var subtitle = "Nhấn để thay đổi"
-    /// When provided, shows an on/off switch and blocks recording while off.
+    var title = "Bật / tắt bộ gõ"
+    var subtitle = "Nhấn để thu phím tắt mới"
     var isEnabled: Binding<Bool>?
-    /// Another shortcut this one must not equal (e.g. the primary toggle for the secondary row).
     var duplicateOf: KeyboardShortcut?
     @State private var hovered = false
     @State private var recordedObserver: NSObjectProtocol?
@@ -1500,35 +1531,41 @@ struct ShortcutRecorderRow: View {
 
     private var conflictMessage: String? {
         if let other = duplicateOf, other == shortcut {
-            return "Trùng với phím tắt bật/tắt chính"
+            return "Trùng với phím tắt chính"
         }
         if systemShortcuts.contains(shortcut.displayParts.joined()) {
-            return "Phím tắt này có thể xung đột với hệ thống"
+            return "Phím tắt có thể xung đột với macOS"
         }
         return nil
     }
 
     var body: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 13))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(Theme.textPrimary)
                 Text(subtitle)
                     .font(.system(size: 11))
-                    .foregroundColor(Color(NSColor.secondaryLabelColor))
+                    .foregroundColor(Theme.textSecondary)
             }
+
             Spacer()
+
             HStack(spacing: 8) {
                 shortcutDisplay
+
                 if let isEnabled {
                     Toggle("", isOn: isEnabled)
                         .toggleStyle(.switch)
+                        .tint(Theme.accent)
                         .labelsHidden()
                 }
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background((hovered || isRecording) ? Color(NSColor.controlBackgroundColor).opacity(0.3) : .clear)
+        .background((hovered || isRecording) ? Theme.rowHover : Color.clear)
         .contentShape(Rectangle())
         .onHover { hovered = enabled && $0 }
         .onTapGesture {
@@ -1537,9 +1574,7 @@ struct ShortcutRecorderRow: View {
         }
         .onDisappear { stopRecording() }
         .onChange(of: enabled) { _ in
-            if isRecording {
-                stopRecording()
-            }
+            if isRecording { stopRecording() }
         }
     }
 
@@ -1547,22 +1582,27 @@ struct ShortcutRecorderRow: View {
         HStack(spacing: 4) {
             if isRecording {
                 Text("Nhấn phím...")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.accentColor)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(RoundedRectangle(cornerRadius: 4).stroke(Color.accentColor, lineWidth: 1))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(Theme.accent)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3.5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Theme.accent, lineWidth: 1.2)
+                    )
             } else {
-                ForEach(shortcut.displayParts, id: \.self) { KeyCap(text: $0) }
+                ForEach(shortcut.displayParts, id: \.self) {
+                    FlatKeyCap(text: $0)
+                }
                 if let conflictMessage {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 12))
-                        .foregroundColor(.orange)
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.warning)
                         .help(conflictMessage)
                 }
             }
         }
-        .opacity(enabled ? 1.0 : 0.5)
+        .opacity(enabled ? 1.0 : 0.45)
     }
 
     private func startRecording() {
@@ -1601,34 +1641,38 @@ struct RestoreShortcutRecorderRow: View {
 
     var body: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Hoàn tác dấu vừa gõ").font(.system(size: 13))
-                Text("Nhấn để thay đổi")
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Hoàn tác dấu vừa gõ")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(Theme.textPrimary)
+                Text("Phục hồi chuỗi ký tự ban đầu khi gõ nhầm dấu (mặc định Esc)")
                     .font(.system(size: 11))
-                    .foregroundColor(Color(NSColor.secondaryLabelColor))
+                    .foregroundColor(Theme.textSecondary)
             }
+
             Spacer()
+
             HStack(spacing: 8) {
                 shortcutDisplay
+
                 Toggle("", isOn: $isEnabled)
                     .toggleStyle(.switch)
+                    .tint(Theme.accent)
                     .labelsHidden()
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background((hovered || isRecording) ? Color(NSColor.controlBackgroundColor).opacity(0.3) : .clear)
+        .background((hovered || isRecording) ? Theme.rowHover : Color.clear)
         .contentShape(Rectangle())
-        .onHover { hovered = isEnabled && $0 } // Only hover effect when enabled
+        .onHover { hovered = isEnabled && $0 }
         .onTapGesture {
-            guard isEnabled else { return } // Disable click when OFF
+            guard isEnabled else { return }
             isRecording ? stopRecording() : startRecording()
         }
         .onDisappear { stopRecording() }
         .onChange(of: isEnabled) { _ in
-            if isRecording {
-                stopRecording()
-            }
+            if isRecording { stopRecording() }
         }
     }
 
@@ -1636,16 +1680,21 @@ struct RestoreShortcutRecorderRow: View {
         HStack(spacing: 4) {
             if isRecording {
                 Text("Nhấn phím...")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.accentColor)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(RoundedRectangle(cornerRadius: 4).stroke(Color.accentColor, lineWidth: 1))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(Theme.accent)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3.5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Theme.accent, lineWidth: 1.2)
+                    )
             } else {
-                ForEach(shortcut.displayParts, id: \.self) { KeyCap(text: $0) }
+                ForEach(shortcut.displayParts, id: \.self) {
+                    FlatKeyCap(text: $0)
+                }
             }
         }
-        .opacity(isEnabled ? 1.0 : 0.5)
+        .opacity(isEnabled ? 1.0 : 0.45)
     }
 
     private func startRecording() {
@@ -1658,7 +1707,7 @@ struct RestoreShortcutRecorderRow: View {
         }
         cancelledObserver = NotificationCenter.default.addObserver(forName: .shortcutRecordingCancelled, object: nil, queue: .main) { _ in stopRecording() }
         windowObserver = NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: nil, queue: .main) { _ in stopRecording() }
-        startRestoreShortcutRecording() // Use restore-specific recording that allows single keys
+        startRestoreShortcutRecording()
     }
 
     private func stopRecording() {
@@ -1668,73 +1717,6 @@ struct RestoreShortcutRecorderRow: View {
         cancelledObserver = nil
         windowObserver = nil
         isRecording = false
-    }
-}
-
-// MARK: - Shortcuts Row View
-
-struct ShortcutsRowView: View {
-    @ObservedObject var appState: AppState
-    let action: () -> Void
-    @State private var hovered = false
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Bảng gõ tắt").font(.system(size: 13))
-                Text(appState.shortcuts.isEmpty
-                    ? "Chưa có từ viết tắt"
-                    : "\(appState.shortcuts.filter(\.isEnabled).count)/\(appState.shortcuts.count) đang bật")
-                    .font(.system(size: 11))
-                    .foregroundColor(Color(NSColor.secondaryLabelColor))
-            }
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(Color(NSColor.tertiaryLabelColor))
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(hovered ? Color(NSColor.controlBackgroundColor).opacity(0.3) : .clear)
-        .contentShape(Rectangle())
-        .onHover { hovered = $0 }
-        .onTapGesture { action() }
-    }
-}
-
-// MARK: - Auto Capitalize Row
-
-struct AutoCapitalizeRow: View {
-    @ObservedObject var appState: AppState
-    @State private var showSheet = false
-    @State private var hovered = false
-
-    var body: some View {
-        SettingsRow {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Tự viết hoa đầu câu").font(.system(size: 13))
-                if appState.autoCapitalize {
-                    Text(subtitleText)
-                        .font(.system(size: 11))
-                        .foregroundColor(hovered ? Color(NSColor.labelColor) : Color(NSColor.secondaryLabelColor))
-                        .onHover { hovered = $0 }
-                        .onTapGesture { showSheet = true }
-                }
-            }
-            Spacer()
-            Toggle("", isOn: $appState.autoCapitalize).toggleStyle(.switch).labelsHidden()
-        }
-        .sheet(isPresented: $showSheet) {
-            AutoCapitalizeExcludedAppsSheet(appState: appState)
-        }
-    }
-
-    private var subtitleText: String {
-        if appState.autoCapitalizeExcludedApps.isEmpty {
-            "Loại trừ ứng dụng"
-        } else {
-            "Loại trừ \(appState.autoCapitalizeExcludedApps.count) ứng dụng"
-        }
     }
 }
 
@@ -1751,16 +1733,17 @@ struct AutoCapitalizeExcludedAppsSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SheetHeader("Loại trừ viết hoa", subtitle: subtitle)
-            Divider()
+            SheetHeader("Loại trừ viết hoa đầu câu", subtitle: subtitle)
+            Divider().overlay(Theme.divider)
+
             if allApps.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "app.badge.checkmark")
                         .font(.system(size: 28))
-                        .foregroundColor(.secondary)
-                    Text("Không có ứng dụng đang chạy")
+                        .foregroundColor(Theme.textSecondary)
+                    Text("Không tìm thấy ứng dụng đang mở")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(Theme.textSecondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -1781,18 +1764,18 @@ struct AutoCapitalizeExcludedAppsSheet: View {
                 }
                 .listStyle(.inset)
             }
-            Divider()
+
+            Divider().overlay(Theme.divider)
             SheetToolbar()
         }
         .frame(width: 460, height: 400)
+        .background(Theme.contentBackground)
         .onAppear { loadApps() }
     }
 
-    /// Load and sort apps only on appear - no re-sorting on toggle
     private func loadApps() {
         let excluded = appState.autoCapitalizeExcludedApps
 
-        // Get running apps
         var apps: [AppToggleItem] = NSWorkspace.shared.runningApplications
             .filter { $0.activationPolicy == .regular }
             .compactMap { app -> AppToggleItem? in
@@ -1805,14 +1788,12 @@ struct AutoCapitalizeExcludedAppsSheet: View {
                 )
             }
 
-        // Add excluded apps not currently running
         for bundleId in excluded where !apps.contains(where: { $0.bundleId == bundleId }) {
             let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first
             let name = running?.localizedName ?? bundleId.components(separatedBy: ".").last ?? bundleId
             apps.append(AppToggleItem(bundleId: bundleId, name: name, icon: running?.icon))
         }
 
-        // Sort once: excluded first, then alphabetically
         allApps = apps.sorted { a, b in
             let aExcluded = excluded.contains(a.bundleId)
             let bExcluded = excluded.contains(b.bundleId)
@@ -1838,56 +1819,108 @@ struct AppToggleRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // App icon
             Group {
                 if let icon {
                     Image(nsImage: icon).resizable()
                 } else {
                     Image(systemName: "app.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 20))
+                        .foregroundColor(Theme.textSecondary)
                 }
             }
-            .frame(width: 28, height: 28)
+            .frame(width: 26, height: 26)
 
-            // App name only
             Text(name)
-                .font(.system(size: 13))
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(Theme.textPrimary)
                 .lineLimit(1)
 
             Spacer()
 
-            // Toggle switch
             Toggle("", isOn: Binding(
                 get: { isExcluded },
                 set: { onToggle($0) }
             ))
             .toggleStyle(.switch)
+            .tint(Theme.accent)
             .labelsHidden()
         }
         .padding(.vertical, 2)
     }
 }
 
-// MARK: - Launch at Login Toggle Row
+// MARK: - Sheet Common Components
 
-struct LaunchAtLoginToggleRow: View {
-    @ObservedObject var appState: AppState
+struct SheetHeader: View {
+    let title: String
+    let subtitle: String?
+
+    init(_ title: String, subtitle: String? = nil) {
+        self.title = title
+        self.subtitle = subtitle
+    }
 
     var body: some View {
-        SettingsRow {
-            Text("Khởi động cùng hệ thống").font(.system(size: 13))
-            Spacer()
-            Toggle("", isOn: Binding(
-                get: { appState.isLaunchAtLoginEnabled },
-                set: { appState.toggleLaunchAtLogin($0) }
-            ))
-            .toggleStyle(.switch)
-            .labelsHidden()
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(Theme.textPrimary)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.textSecondary)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .background(Theme.sidebar)
     }
 }
 
-// MARK: - Preview
+struct SheetToolbar<Actions: View>: View {
+    @Environment(\.dismiss) private var dismiss
+    let actions: Actions?
 
-#Preview { MainSettingsView() }
+    init(@ViewBuilder actions: () -> Actions) {
+        self.actions = actions()
+    }
+
+    init() where Actions == EmptyView {
+        actions = nil
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if let actions {
+                actions
+            }
+            Spacer()
+            Button("Xong") { dismiss() }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
+                .foregroundColor(Theme.textOnAccent)
+                .keyboardShortcut(.escape, modifiers: [])
+        }
+        .font(.system(size: 12))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Theme.sidebar)
+    }
+}
+
+struct DeleteButton: View {
+    let action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "trash")
+                .font(.system(size: 11))
+                .foregroundColor(hovered ? Theme.error : Theme.textSecondary)
+        }
+        .buttonStyle(.borderless)
+        .onHover { hovered = $0 }
+        .help("Xoá")
+    }
+}

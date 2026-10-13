@@ -1,114 +1,140 @@
 import AppKit
 import SwiftUI
 
-// MARK: - Advanced Settings View
+// MARK: - Apps Settings View
 
-struct AdvancedSettingsView: View {
+struct AppsSettingsView: View {
     @ObservedObject var appState: AppState
     @State private var showAddApp = false
-    @State private var logEnabled = FileManager.default.fileExists(atPath: "/tmp/gonhanh_debug.log")
+    @State private var showAutoCapitalizeSheet = false
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 20) {
-                performanceSection
-                compatibilitySection
-                logSection
-                perAppSection
-                Spacer()
-            }
-        }
-    }
-
-    // MARK: - Performance
-
-    private var performanceSection: some View {
-        VStack(spacing: 0) {
-            SettingsToggleRow(
-                "Tắt phát hiện Spotlight/Raycast",
-                subtitle: "Bỏ qua panel app, giảm CPU/RAM sử dụng",
-                isOn: $appState.disablePanelDetection
-            )
-            Divider().padding(.horizontal, 14)
-            SettingsToggleRow(
-                "Khởi động lại khi đóng cài đặt",
-                subtitle: "Tự động giải phóng RAM của cài đặt khi đóng",
-                isOn: $appState.restartOnClose
-            )
-        }
-        .cardBackground()
-    }
-
-    // MARK: - Compatibility
-
-    private var compatibilitySection: some View {
-        VStack(spacing: 0) {
-            SettingsToggleRow(
-                "Chế độ remote desktop",
-                subtitle: "Bật khi gõ qua RustDesk, AnyDesk, TeamViewer. Bắt synthetic events ở session level thay vì HID level. (Bàn phím trợ năng / Accessibility Keyboard đã tự động được hỗ trợ.)",
-                isOn: $appState.sessionTapMode
-            )
-        }
-        .cardBackground()
-    }
-
-    // MARK: - Log
-
-    private var logSection: some View {
-        VStack(spacing: 0) {
-            SettingsRow {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Debug Log").font(.system(size: 13, weight: .medium))
-                    Text("Ghi log xử lý phím vào /tmp/gonhanh_debug.log")
-                        .font(.system(size: 11))
-                        .foregroundColor(Color(NSColor.secondaryLabelColor))
+            VStack(alignment: .leading, spacing: 18) {
+                // Header
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Ứng dụng")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(Theme.textPrimary)
+                    Text("Tùy biến hành vi gõ và độ tương thích cho từng phần mềm trên macOS.")
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.textSecondary)
                 }
-                Spacer()
-                LogToggleButton(isEnabled: $logEnabled)
-            }
-            if logEnabled {
-                Divider().padding(.leading, 12)
-                LogViewerSection()
-            }
-        }
-        .cardBackground()
-    }
+                .padding(.bottom, 4)
 
-    // MARK: - Per-App Profiles
+                // Chế độ tổng thể theo ứng dụng
+                VStack(alignment: .leading, spacing: 6) {
+                    SettingSectionHeader(title: "Chế độ ứng dụng")
 
-    private var perAppSection: some View {
-        VStack(spacing: 0) {
-            SettingsRow {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Tuỳ chỉnh theo ứng dụng").font(.system(size: 13, weight: .medium))
-                    Text("Tuỳ chỉnh cách TuiGoAI hoạt động cho từng ứng dụng")
-                        .font(.system(size: 11))
-                        .foregroundColor(Color(NSColor.secondaryLabelColor))
+                    VStack(spacing: 0) {
+                        SettingToggleRow(
+                            title: "Nhớ trạng thái theo app",
+                            description: "Tự động ghi nhớ và chuyển đổi chế độ gõ tiếng Việt / tiếng Anh riêng cho từng cửa sổ đang mở.",
+                            isOn: $appState.perAppModeEnabled
+                        )
+
+                        Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                        SettingToggleRow(
+                            title: "Tắt phát hiện Spotlight / Raycast",
+                            description: "Bỏ qua các panel tìm kiếm nổi để giảm sử dụng CPU và tối ưu hóa bộ nhớ RAM.",
+                            isOn: $appState.disablePanelDetection
+                        )
+
+                        Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                        SettingToggleRow(
+                            title: "Chế độ Remote Desktop",
+                            description: "Bắt synthetic events ở session level khi gõ qua AnyDesk, RustDesk, TeamViewer.",
+                            isOn: $appState.sessionTapMode
+                        )
+                    }
+                    .flatCard()
                 }
-                Spacer()
-                Button(action: { showAddApp = true }) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(.accentColor)
-                }
-                .buttonStyle(.plain)
-            }
 
-            ForEach(sortedProfiles, id: \.key) { entry in
-                Divider().padding(.leading, 12)
-                PerAppProfileRow(
-                    bundleId: entry.key,
-                    config: entry.value,
-                    onChange: { appState.perAppProfiles[entry.key] = $0 },
-                    onRemove: { appState.perAppProfiles.removeValue(forKey: entry.key) }
-                )
+                // Loại trừ viết hoa đầu câu
+                VStack(alignment: .leading, spacing: 6) {
+                    SettingSectionHeader(title: "Viết hoa đầu câu")
+
+                    VStack(spacing: 0) {
+                        SettingRow(
+                            title: "Danh sách ứng dụng loại trừ",
+                            description: appState.autoCapitalizeExcludedApps.isEmpty
+                                ? "Chưa có ứng dụng nào bị loại trừ khỏi tính năng tự viết hoa"
+                                : "\(appState.autoCapitalizeExcludedApps.count) ứng dụng đang được loại trừ"
+                        ) {
+                            Button("Quản lý...") {
+                                showAutoCapitalizeSheet = true
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(Theme.accent)
+                        }
+                    }
+                    .flatCard()
+                }
+
+                // Cấu hình chi tiết từng ứng dụng
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        SettingSectionHeader(title: "Tùy chỉnh riêng cho từng phần mềm")
+                        Spacer()
+                        Button(action: { showAddApp = true }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "plus.circle.fill")
+                                Text("Thêm ứng dụng")
+                            }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Theme.accent)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    VStack(spacing: 0) {
+                        if sortedProfiles.isEmpty {
+                            VStack(spacing: 8) {
+                                Image(systemName: "slider.horizontal.2.square")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(Theme.textSecondary)
+                                Text("Chưa có cấu hình riêng nào")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(Theme.textPrimary)
+                                Text("Nhấn \"Thêm ứng dụng\" ở góc phải để chỉnh độ trễ hoặc chế độ inject cho app bị lỗi.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(Theme.textSecondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 24)
+                            .padding(.horizontal, 16)
+                        } else {
+                            ForEach(Array(sortedProfiles.enumerated()), id: \.element.key) { index, entry in
+                                if index > 0 {
+                                    Divider().overlay(Theme.divider).padding(.leading, 14)
+                                }
+                                PerAppProfileRow(
+                                    bundleId: entry.key,
+                                    config: entry.value,
+                                    onChange: { appState.perAppProfiles[entry.key] = $0 },
+                                    onRemove: { appState.perAppProfiles.removeValue(forKey: entry.key) }
+                                )
+                            }
+                        }
+                    }
+                    .flatCard()
+                }
+
+                Spacer(minLength: 10)
             }
+            .padding(26)
         }
-        .cardBackground()
+        .background(Theme.contentBackground)
         .sheet(isPresented: $showAddApp) {
             AppPickerSheet(existingBundleIds: Set(appState.perAppProfiles.keys)) { bundleId in
                 appState.perAppProfiles[bundleId] = PerAppConfig.fromDetected(bundleId: bundleId)
             }
+        }
+        .sheet(isPresented: $showAutoCapitalizeSheet) {
+            AutoCapitalizeExcludedAppsSheet(appState: appState)
         }
     }
 
@@ -116,6 +142,9 @@ struct AdvancedSettingsView: View {
         appState.perAppProfiles.sorted { $0.key < $1.key }
     }
 }
+
+// Backward compatibility alias
+typealias AdvancedSettingsView = AppsSettingsView
 
 // MARK: - Per-App Profile Row
 
@@ -128,71 +157,79 @@ struct PerAppProfileRow: View {
     @State private var resetHovered = false
 
     private let labelWidth: CGFloat = 48
-    private let labelColor = Color(NSColor.tertiaryLabelColor)
     private let labelFont = Font.system(size: 10)
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             // Header
             HStack(spacing: 8) {
                 AppIconView(bundleId: bundleId)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 6) {
-                        Text(appName).font(.system(size: 12, weight: .medium))
+                        Text(appName)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Theme.textPrimary)
                         if let hint = detectedHint {
                             Text(hint)
                                 .font(.system(size: 9))
-                                .foregroundColor(labelColor)
-                                .padding(.horizontal, 5)
+                                .foregroundColor(Theme.textSecondary)
+                                .padding(.horizontal, 4)
                                 .padding(.vertical, 1)
-                                .background(labelColor.opacity(0.1))
+                                .background(Theme.textSecondary.opacity(0.12))
                                 .clipShape(RoundedRectangle(cornerRadius: 3))
                         }
                     }
                     Text(bundleId)
                         .font(.system(size: 9, design: .monospaced))
-                        .foregroundColor(labelColor)
+                        .foregroundColor(Theme.textSecondary)
                         .lineLimit(1).truncationMode(.middle)
                 }
                 Spacer()
                 Button(action: { onChange(PerAppConfig.fromDetected(bundleId: bundleId)) }) {
                     Image(systemName: "arrow.counterclockwise.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(resetHovered ? .accentColor : Color(NSColor.quaternaryLabelColor))
+                        .font(.system(size: 13))
+                        .foregroundColor(resetHovered ? Theme.accent : Theme.textSecondary)
                 }
-                .buttonStyle(.plain).onHover { resetHovered = $0 }
-                .help("Reset về mặc định")
+                .buttonStyle(.plain)
+                .onHover { resetHovered = $0 }
+                .help("Khôi phục mặc định")
+
                 Button(action: onRemove) {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(removeHovered ? .red : Color(NSColor.quaternaryLabelColor))
+                        .font(.system(size: 13))
+                        .foregroundColor(removeHovered ? Theme.error : Theme.textSecondary)
                 }
-                .buttonStyle(.plain).onHover { removeHovered = $0 }
+                .buttonStyle(.plain)
+                .onHover { removeHovered = $0 }
+                .help("Xóa khỏi danh sách tùy biến")
             }
             .padding(.horizontal, 14)
             .padding(.top, 10)
 
-            // Delay
+            // Delay slider
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text("Delay").font(labelFont).foregroundColor(labelColor)
+                    Text("Độ trễ")
+                        .font(labelFont)
+                        .foregroundColor(Theme.textSecondary)
                         .frame(width: labelWidth, alignment: .leading)
                     Slider(value: delaySliderBinding, in: 0 ... Double(DelayPreset.allCases.count - 1), step: 1)
+                        .tint(Theme.accent)
                     Text(delayPresetName)
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(delayPresetColor)
                         .frame(width: 52, alignment: .trailing)
                 }
-                Text("Tăng nếu bị nuốt chữ · Giảm nếu app phản hồi nhanh")
-                    .font(.system(size: 10))
-                    .foregroundColor(Color(NSColor.tertiaryLabelColor))
+                Text("Tăng độ trễ nếu ứng dụng phản hồi chậm hoặc bị nuốt ký tự")
+                    .font(.system(size: 9))
+                    .foregroundColor(Theme.textSecondary)
                     .padding(.leading, labelWidth + 6)
             }
             .padding(.horizontal, 14)
 
-            // GN · Inject
-            HStack(spacing: 8) {
-                profilePicker("Bật TuiGoAI", selection: enabledBinding, width: 80) {
+            // Trạng thái bộ gõ & Kiểu inject
+            HStack(spacing: 12) {
+                profilePicker("Bộ gõ", selection: enabledBinding, width: 85) {
                     Text("Tự động").tag(0)
                     Text("Bật").tag(1)
                     Text("Tắt").tag(-1)
@@ -203,20 +240,24 @@ struct PerAppProfileRow: View {
                 Spacer()
             }
             .padding(.horizontal, 14)
+            .padding(.bottom, 10)
         }
-        .padding(.bottom, 12)
     }
 
     private func profilePicker(_ label: String, selection: Binding<some Hashable>, width: CGFloat, @ViewBuilder content: () -> some View) -> some View {
         HStack(spacing: 4) {
-            Text(label).font(labelFont).foregroundColor(labelColor)
-                .lineLimit(1).fixedSize()
+            Text(label)
+                .font(labelFont)
+                .foregroundColor(Theme.textSecondary)
+                .lineLimit(1)
+                .fixedSize()
             Picker("", selection: selection, content: content)
-                .labelsHidden().frame(width: width)
+                .labelsHidden()
+                .frame(width: width)
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - Bindings & Helpers
 
     private var enabledBinding: Binding<Int> {
         Binding(
@@ -247,7 +288,6 @@ struct PerAppProfileRow: View {
         (DelayPreset(rawValue: config.delayPreset) ?? .none).color
     }
 
-    /// Show detected default injection method as badge (e.g. "fast", "slow")
     private var detectedHint: String? {
         getDetectedDefault(for: bundleId)?.method
     }
