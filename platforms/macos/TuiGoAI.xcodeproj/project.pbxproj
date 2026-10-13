@@ -29,6 +29,7 @@
 		B1000001000000000000003 /* SoundManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002000000000000003 /* SoundManagerTests.swift */; };
 		CHANGELOG001 /* ChangelogWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CHANGELOG002 /* ChangelogWindow.swift */; };
 		GHOSTTEXT001 /* GhostTextManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = GHOSTTEXT002 /* GhostTextManager.swift */; };
+		AUTOCORE001 /* AutocompleteCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTOCORE002 /* AutocompleteCore.swift */; };
 		LOGVWR001 /* LogViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = LOGVWR002 /* LogViewer.swift */; };
 		OLLAMA001 /* OllamaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = OLLAMA002 /* OllamaService.swift */; };
 		PACMOD001 /* PerAppConfigModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = PACMOD002 /* PerAppConfigModels.swift */; };
@@ -72,6 +73,7 @@
 		B1000003000000000000002 /* TuiGoAITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TuiGoAITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CHANGELOG002 /* ChangelogWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangelogWindow.swift; sourceTree = "<group>"; };
 		GHOSTTEXT002 /* GhostTextManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhostTextManager.swift; sourceTree = "<group>"; };
+		AUTOCORE002 /* AutocompleteCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutocompleteCore.swift; sourceTree = "<group>"; };
 		LOGVWR002 /* LogViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogViewer.swift; sourceTree = "<group>"; };
 		OLLAMA002 /* OllamaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaService.swift; sourceTree = "<group>"; };
 		PACMOD002 /* PerAppConfigModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerAppConfigModels.swift; sourceTree = "<group>"; };
@@ -103,6 +105,7 @@
 			children = (
 				A1000002000000000000007 /* AppMetadata.swift */,
 				AISERVICE002 /* AIService.swift */,
+				AUTOCORE002 /* AutocompleteCore.swift */,
 				GHOSTTEXT002 /* GhostTextManager.swift */,
 				OLLAMA002 /* OllamaService.swift */,
 				AISET002 /* AISettingsView.swift */,
@@ -255,6 +258,7 @@
 			files = (
 				A1000001000000000000007 /* AppMetadata.swift in Sources */,
 				AISERVICE001 /* AIService.swift in Sources */,
+				AUTOCORE001 /* AutocompleteCore.swift in Sources */,
 				GHOSTTEXT001 /* GhostTextManager.swift in Sources */,
 				OLLAMA001 /* OllamaService.swift in Sources */,
 				AISET001 /* AISettingsView.swift in Sources */,

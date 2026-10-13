@@ -58,4 +58,48 @@ final class AIServiceTests: XCTestCase {
         XCTAssertFalse(AIRewriteTone.concise.promptInstruction.isEmpty)
         XCTAssertFalse(AIRewriteTone.elaborate.promptInstruction.isEmpty)
     }
+
+    // MARK: - AutocompleteCore Tests (KeyType ported)
+
+    func testCaretBoundaryTrimming() {
+        XCTAssertEqual(CaretBoundary.trimmingTrailingWhitespace("Xin chào "), "Xin chào")
+        XCTAssertEqual(CaretBoundary.trimmingTrailingWhitespace("Xin chào   \n"), "Xin chào")
+        XCTAssertEqual(CaretBoundary.trimmingTrailingWhitespace("Xin chào"), "Xin chào")
+    }
+
+    func testCaretBoundaryReconciliation() {
+        // Model emits space after whitespace: should strip leading space
+        XCTAssertEqual(CaretBoundary.reconcile(" bạn", beforeCursor: "Chào "), "bạn")
+        // Model emits space after word: keep leading space
+        XCTAssertEqual(CaretBoundary.reconcile(" bạn", beforeCursor: "Chào"), " bạn")
+        // Strip leading newline artifact
+        XCTAssertEqual(CaretBoundary.reconcile("\n\nbạn ơi", beforeCursor: "Chào "), "bạn ơi")
+    }
+
+    func testSuffixOverlapGuard() {
+        XCTAssertTrue(SuffixOverlapGuard.duplicatesSuffix(
+            completion: "chiến dịch PR",
+            beforeCursor: "Gửi ",
+            afterCursor: "chiến dịch PR sắp tới"
+        ))
+        XCTAssertFalse(SuffixOverlapGuard.duplicatesSuffix(
+            completion: "kế hoạch mới",
+            beforeCursor: "Gửi ",
+            afterCursor: "chiến dịch PR sắp tới"
+        ))
+    }
+
+    func testNextWordSplitter() {
+        let (head1, rest1) = NextWordSplitter.split("bạn ơi hôm nay")
+        XCTAssertEqual(head1, "bạn")
+        XCTAssertEqual(rest1, " ơi hôm nay")
+
+        let (head2, rest2) = NextWordSplitter.split(" ơi hôm nay")
+        XCTAssertEqual(head2, " ơi")
+        XCTAssertEqual(rest2, " hôm nay")
+
+        let (head3, rest3) = NextWordSplitter.split(".")
+        XCTAssertEqual(head3, ".")
+        XCTAssertEqual(rest3, "")
+    }
 }

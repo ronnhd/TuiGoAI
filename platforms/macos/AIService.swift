@@ -356,34 +356,27 @@ public final class AIService: @unchecked Sendable {
         let model = config.model.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !model.isEmpty else { throw AIError.noResponse }
 
-        let endpoint = URL(string: "http://localhost:11434/api/chat")!
-        let payload = OllamaChatRequest(
-            model: model,
-            messages: [
-                OllamaChatRequest.Message(role: "system", content: """
-                Bạn là hệ thống gợi ý phần tiếp theo inline cho người đang nhập liệu. Chỉ viết nối tiếp vị trí con trỏ, thường 2–6 từ, tối đa 32 token. Bắt buộc giữ nguyên ngôn ngữ và giọng văn trong `text_before_cursor`, kể cả khi văn bản pha Việt-Anh. Không nhắc lại bất kỳ phần nào của văn bản đầu vào. Không dịch sang ngôn ngữ khác. Không chèn tên, số liệu, giá, ngày tháng hay cam kết mới. Nếu `text_after_cursor` đã có từ/cụm kế tiếp thì không gợi ý trùng. Chỉ trả về phần text được nối tiếp, không giải thích, không markdown, không dấu ngoặc kép.
-                """),
-                OllamaChatRequest.Message(role: "user", content: """
-                Văn bản ngay trước con trỏ:
-                <text_before_cursor>
-                \(String(prefixText.suffix(1200)))
-                </text_before_cursor>
+        let trimmedPrefix = CaretBoundary.trimmingTrailingWhitespace(prefixText)
+        guard !trimmedPrefix.isEmpty else { throw AIError.noResponse }
+        let windowedPrefix = String(trimmedPrefix.suffix(1000))
 
-                Văn bản ngay sau con trỏ:
-                <text_after_cursor>
-                \(String(suffixText.prefix(240)))
-                </text_after_cursor>
-                """)
-            ],
+        let endpoint = URL(string: "http://localhost:11434/api/generate")!
+        let payload = OllamaGenerateRequest(
+            model: model,
+            prompt: windowedPrefix,
+            raw: true,
             stream: false,
-            think: false,
-            options: OllamaChatRequest.Options(temperature: 0.15, numPredict: 32, numCtx: 2048),
+            options: OllamaGenerateRequest.Options(
+                temperature: 0.2,
+                numPredict: 24,
+                stop: ["\n", "\r", "<|im_end|>", "<|endoftext|>", "```"]
+            ),
             keepAlive: "5m"
         )
 
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
-        request.timeoutInterval = min(max(config.timeoutInterval, 10), 60)
+        request.timeoutInterval = min(max(config.timeoutInterval, 5), 30)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(payload)
         let (data, response): (Data, URLResponse)
@@ -398,9 +391,10 @@ public final class AIService: @unchecked Sendable {
         guard (200 ... 299).contains(http.statusCode) else {
             throw AIError.httpError(statusCode: http.statusCode, message: String(data: data, encoding: .utf8) ?? "Ollama error")
         }
-        let result = try JSONDecoder().decode(OllamaChatResponse.self, from: data)
-        guard let raw = result.message?.content else { throw AIError.noResponse }
-        let cleaned = Self.cleanCompletion(raw, prefix: prefixText, suffix: suffixText)
+        let result = try JSONDecoder().decode(OllamaGenerateResponse.self, from: data)
+        guard let raw = result.response, !raw.isEmpty else { throw AIError.noResponse }
+        let reconciled = CaretBoundary.reconcile(raw, beforeCursor: prefixText)
+        let cleaned = Self.cleanCompletion(reconciled, prefix: prefixText, suffix: suffixText)
         guard !cleaned.isEmpty else { throw AIError.noResponse }
         return cleaned
     }
@@ -414,13 +408,19 @@ public final class AIService: @unchecked Sendable {
             text = String(text.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
         }
         guard !text.isEmpty else { return "" }
-        // Fail closed on an echoed tail or a response that has copied the entire prompt.
-        let prefixTail = String(prefix.suffix(32)).trimmingCharacters(in: .whitespacesAndNewlines)
-        if !prefixTail.isEmpty && text.localizedCaseInsensitiveContains(prefixTail) { return "" }
+
+        // Suffix overlap guard
         if !suffix.isEmpty {
-            let firstSuffix = suffix.split(whereSeparator: \.isWhitespace).prefix(4).joined(separator: " ")
-            if firstSuffix.count >= 3 && text.localizedCaseInsensitiveContains(firstSuffix) { return "" }
+            if SuffixOverlapGuard.duplicatesSuffix(completion: text, beforeCursor: prefix, afterCursor: suffix) {
+                if let nonDupLen = SuffixOverlapGuard.nonDuplicatingPrefixLength(completion: text, beforeCursor: prefix, afterCursor: suffix), nonDupLen > 0 {
+                    text = String(text.prefix(nonDupLen)).trimmingCharacters(in: .whitespacesAndNewlines)
+                } else {
+                    return ""
+                }
+            }
         }
+        guard !text.isEmpty else { return "" }
+
         let firstLine = text.components(separatedBy: .newlines).first ?? ""
         var words = firstLine.split(whereSeparator: \.isWhitespace).map(String.init)
         guard !words.isEmpty else { return "" }
@@ -440,25 +440,30 @@ public final class AIService: @unchecked Sendable {
         return deduplicated.prefix(8).joined(separator: " ")
     }
 
-    private struct OllamaChatRequest: Encodable {
-        struct Message: Encodable { let role: String; let content: String }
+    private struct OllamaGenerateRequest: Encodable {
         struct Options: Encodable {
             let temperature: Double
             let numPredict: Int
-            let numCtx: Int
-            enum CodingKeys: String, CodingKey { case temperature; case numPredict = "num_predict"; case numCtx = "num_ctx" }
+            let stop: [String]
+            enum CodingKeys: String, CodingKey {
+                case temperature
+                case numPredict = "num_predict"
+                case stop
+            }
         }
         let model: String
-        let messages: [Message]
+        let prompt: String
+        let raw: Bool
         let stream: Bool
-        let think: Bool
         let options: Options
         let keepAlive: String
-        enum CodingKeys: String, CodingKey { case model, messages, stream, think, options; case keepAlive = "keep_alive" }
+        enum CodingKeys: String, CodingKey {
+            case model, prompt, raw, stream, options
+            case keepAlive = "keep_alive"
+        }
     }
 
-    private struct OllamaChatResponse: Decodable {
-        struct Message: Decodable { let content: String? }
-        let message: Message?
+    private struct OllamaGenerateResponse: Decodable {
+        let response: String?
     }
 }
