@@ -81,11 +81,21 @@ final class AIServiceTests: XCTestCase {
             recentMessages: ["Chào bạn, hôm nay có họp không?", "Tôi vừa gửi file qua email"],
             appName: "Telegram"
         )
-        XCTAssertTrue(prompt.contains("Ứng dụng: Telegram."))
+        // Ensure app name does not leak into the prompt to prevent LLM topic bias
+        XCTAssertFalse(prompt.contains("Telegram"))
+        XCTAssertFalse(prompt.contains("Ứng dụng:"))
         XCTAssertTrue(prompt.contains("Các câu vừa chat gần đây:"))
         XCTAssertTrue(prompt.contains("- Chào bạn, hôm nay có họp không?"))
         XCTAssertTrue(prompt.contains("- Tôi vừa gửi file qua email"))
         XCTAssertTrue(prompt.contains("<|im_start|>assistant\ncòn họp lúc"))
+    }
+
+    func testCleanCompletionRejectsForeignScripts() {
+        let cleanedChinese = AIService.cleanCompletion("một mùa新春快乐", prefix: "chúc bạn ", suffix: "")
+        XCTAssertEqual(cleanedChinese, "")
+
+        let cleanedKorean = AIService.cleanCompletion("파일을 보냅니다", prefix: "tôi gửi ", suffix: "")
+        XCTAssertEqual(cleanedKorean, "")
     }
 
     func testCleanCompletionStripsRewrittenPrefix() {

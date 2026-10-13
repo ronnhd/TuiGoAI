@@ -427,9 +427,6 @@ public final class AIService: @unchecked Sendable {
         guard !trimmedPrefix.isEmpty else { return "" }
 
         var userLines: [String] = []
-        if let appName = appName, !appName.isEmpty {
-            userLines.append("Ứng dụng: \(appName).")
-        }
         let history = recentMessages
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -445,8 +442,7 @@ public final class AIService: @unchecked Sendable {
 
         return """
         <|im_start|>system
-        Bạn là bộ gõ tiếng Việt. Bạn tiếp tục hoàn thành câu đang gõ một cách tự nhiên, đúng ngữ cảnh và giữ đúng đại từ xưng hô.
-        Chỉ trả về các từ viết tiếp bằng tiếng Việt, không lặp lại từ đã có.<|im_end|>
+        Bạn là bộ gõ tiếng Việt. Bạn chỉ viết tiếp câu bằng tiếng Việt tự nhiên (chữ Quốc ngữ). Không dùng tiếng nước ngoài, không lặp lại từ đã có.<|im_end|>
         <|im_start|>user
         \(userContent)<|im_end|>
         <|im_start|>assistant
@@ -494,6 +490,18 @@ public final class AIService: @unchecked Sendable {
         text = text.replacingOccurrences(of: "^```[^\\n]*\\n|\\n```$", with: "", options: .regularExpression)
             .trimmingCharacters(in: CharacterSet(charactersIn: "\\\"'`"))
         guard !text.isEmpty else { return "" }
+
+        // Strip foreign script hallucinations (CJK, Hangul, Katakana, Hiragana)
+        let hasForbiddenScript = text.unicodeScalars.contains { scalar in
+            (0x4E00...0x9FFF).contains(scalar.value) || // CJK Unified Ideographs
+            (0x3400...0x4DBF).contains(scalar.value) || // CJK Extension A
+            (0xAC00...0xD7AF).contains(scalar.value) || // Hangul Syllables
+            (0x3040...0x30FF).contains(scalar.value)    // Hiragana / Katakana
+        }
+        if hasForbiddenScript {
+            return ""
+        }
+
         text = stripOverlappingPrefix(text, prefix: prefix)
         guard !text.isEmpty else { return "" }
 
