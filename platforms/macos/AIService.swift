@@ -372,24 +372,22 @@ public final class AIService: @unchecked Sendable {
         if let bundle = bundleId, ChatHistoryBuffer.isChatApp(bundle) {
             recentMessages = ChatHistoryBuffer.shared.recentHistory(for: bundle)
         }
-        let userPrompt = Self.buildAutocompleteUserPrompt(
+        let promptText = Self.buildAutocompletePrompt(
             prefix: windowedPrefix,
             recentMessages: recentMessages,
             appName: appName
         )
 
-        let endpoint = URL(string: "http://localhost:11434/api/chat")!
-        let payload = OllamaChatRequest(
+        let endpoint = URL(string: "http://localhost:11434/api/generate")!
+        let payload = OllamaGenerateRequest(
             model: model,
-            messages: [
-                OllamaChatRequest.Message(role: "system", content: Self.autocompleteSystemPrompt),
-                OllamaChatRequest.Message(role: "user", content: userPrompt)
-            ],
+            prompt: promptText,
+            raw: true,
             stream: false,
-            options: OllamaChatRequest.Options(
-                temperature: 0.1,
-                topP: 0.8,
-                topK: 20,
+            options: OllamaGenerateRequest.Options(
+                temperature: 0.2,
+                topP: 0.9,
+                topK: nil,
                 numPredict: lengthConfig.numPredict,
                 stop: ["\n", "\r", "<|im_end|>", "<|endoftext|>", "```"]
             ),
@@ -413,40 +411,47 @@ public final class AIService: @unchecked Sendable {
         guard (200 ... 299).contains(http.statusCode) else {
             throw AIError.httpError(statusCode: http.statusCode, message: String(data: data, encoding: .utf8) ?? "Ollama error")
         }
-        let result = try JSONDecoder().decode(OllamaChatResponse.self, from: data)
-        guard let raw = result.message?.content, !raw.isEmpty else { throw AIError.noResponse }
+        let result = try JSONDecoder().decode(OllamaGenerateResponse.self, from: data)
+        guard let raw = result.response, !raw.isEmpty else { throw AIError.noResponse }
         let cleaned = Self.cleanCompletion(raw, prefix: prefixText, suffix: suffixText, maxWords: lengthConfig.maxWords)
         guard !cleaned.isEmpty else { throw AIError.noResponse }
         return cleaned
     }
 
-    static let autocompleteSystemPrompt = """
-    Bạn hoàn thành câu tiếng Việt ngay tại con trỏ.
-    Chỉ xuất các từ MỚI tiếp theo. Cấm viết lại, cấm nhắc lại từ vừa gõ.
-    Không giải thích, không ngoặc kép, không xuống dòng.
-    """
-
-    static func buildAutocompleteUserPrompt(
+    public static func buildAutocompletePrompt(
         prefix: String,
         recentMessages: [String] = [],
         appName: String? = nil
     ) -> String {
-        var parts: [String] = []
-        if let appName, !appName.isEmpty {
-            parts.append("Ứng dụng: \(appName).")
+        let trimmedPrefix = CaretBoundary.trimmingTrailingWhitespace(prefix)
+        guard !trimmedPrefix.isEmpty else { return "" }
+
+        var userLines: [String] = []
+        if let appName = appName, !appName.isEmpty {
+            userLines.append("Ứng dụng: \(appName).")
         }
         let history = recentMessages
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
             .suffix(3)
         if !history.isEmpty {
-            parts.append("Các câu tôi vừa gửi:")
-            parts.append(history.joined(separator: "\n"))
+            userLines.append("Các câu vừa chat gần đây:")
+            for msg in history {
+                userLines.append("- \(msg)")
+            }
         }
-        parts.append("Đã gõ (không lặp lại):")
-        parts.append(prefix)
-        parts.append("Từ mới tiếp theo:")
-        return parts.joined(separator: "\n")
+        userLines.append("Viết tiếp câu đang gõ bằng tiếng Việt:")
+        let userContent = userLines.joined(separator: "\n")
+
+        return """
+        <|im_start|>system
+        Bạn là bộ gõ tiếng Việt. Bạn tiếp tục hoàn thành câu đang gõ một cách tự nhiên, đúng ngữ cảnh và giữ đúng đại từ xưng hô.
+        Chỉ trả về các từ viết tiếp bằng tiếng Việt, không lặp lại từ đã có.<|im_end|>
+        <|im_start|>user
+        \(userContent)<|im_end|>
+        <|im_start|>assistant
+        \(trimmedPrefix)
+        """
     }
 
     static func stripOverlappingPrefix(_ text: String, prefix: String) -> String {
@@ -525,11 +530,7 @@ public final class AIService: @unchecked Sendable {
         return CaretBoundary.reconcile(joined, beforeCursor: prefix)
     }
 
-    private struct OllamaChatRequest: Encodable {
-        struct Message: Encodable {
-            let role: String
-            let content: String
-        }
+    private struct OllamaGenerateRequest: Encodable {
         struct Options: Encodable {
             let temperature: Double
             let topP: Double?
@@ -545,21 +546,18 @@ public final class AIService: @unchecked Sendable {
             }
         }
         let model: String
-        let messages: [Message]
+        let prompt: String
+        let raw: Bool
         let stream: Bool
         let options: Options
         let keepAlive: String
         enum CodingKeys: String, CodingKey {
-            case model, messages, stream, options
+            case model, prompt, raw, stream, options
             case keepAlive = "keep_alive"
         }
     }
 
-    private struct OllamaChatResponse: Decodable {
-        struct Message: Decodable {
-            let role: String?
-            let content: String?
-        }
-        let message: Message?
+    private struct OllamaGenerateResponse: Decodable {
+        let response: String?
     }
 }

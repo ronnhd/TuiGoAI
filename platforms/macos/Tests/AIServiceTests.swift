@@ -68,25 +68,24 @@ final class AIServiceTests: XCTestCase {
         XCTAssertFalse(AIRewriteTone.elaborate.promptInstruction.isEmpty)
     }
 
-    func testAutocompleteUserPromptKeepsPrefixAsPlainText() {
-        let prompt = AIService.buildAutocompleteUserPrompt(prefix: "mai mình")
-        XCTAssertTrue(prompt.contains("Đã gõ (không lặp lại):\nmai mình"))
-        XCTAssertTrue(prompt.contains("Từ mới tiếp theo:"))
-        XCTAssertFalse(prompt.contains("- mai mình"))
+    func testAutocompletePromptUsesChatMLAndPrefill() {
+        let prompt = AIService.buildAutocompletePrompt(prefix: "mai mình")
+        XCTAssertTrue(prompt.contains("<|im_start|>system"))
+        XCTAssertTrue(prompt.contains("<|im_start|>assistant\nmai mình"))
+        XCTAssertTrue(prompt.hasSuffix("mai mình"))
     }
 
-    func testAutocompleteUserPromptJoinsChatHistoryWithoutBullets() {
-        let prompt = AIService.buildAutocompleteUserPrompt(
+    func testAutocompletePromptIncludesChatHistory() {
+        let prompt = AIService.buildAutocompletePrompt(
             prefix: "còn họp lúc",
             recentMessages: ["Chào bạn, hôm nay có họp không?", "Tôi vừa gửi file qua email"],
             appName: "Telegram"
         )
         XCTAssertTrue(prompt.contains("Ứng dụng: Telegram."))
-        XCTAssertTrue(prompt.contains("Các câu tôi vừa gửi:"))
-        XCTAssertTrue(prompt.contains("Chào bạn, hôm nay có họp không?\nTôi vừa gửi file qua email"))
-        XCTAssertTrue(prompt.contains("Đã gõ (không lặp lại):\ncòn họp lúc"))
-        XCTAssertFalse(prompt.contains("- Chào bạn"))
-        XCTAssertFalse(prompt.contains("- còn họp lúc"))
+        XCTAssertTrue(prompt.contains("Các câu vừa chat gần đây:"))
+        XCTAssertTrue(prompt.contains("- Chào bạn, hôm nay có họp không?"))
+        XCTAssertTrue(prompt.contains("- Tôi vừa gửi file qua email"))
+        XCTAssertTrue(prompt.contains("<|im_start|>assistant\ncòn họp lúc"))
     }
 
     func testCleanCompletionStripsRewrittenPrefix() {
