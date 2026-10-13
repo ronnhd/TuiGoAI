@@ -368,6 +368,7 @@ public final class AIService: @unchecked Sendable {
         let trimmedPrefix = CaretBoundary.trimmingTrailingWhitespace(prefixText)
         guard !trimmedPrefix.isEmpty else { throw AIError.noResponse }
         let windowedPrefix = String(trimmedPrefix.suffix(2000))
+        let windowedSuffix = String(suffixText.prefix(500)).trimmingCharacters(in: .newlines)
 
         var recentMessages: [String] = []
         if let bundle = bundleId {
@@ -376,6 +377,7 @@ public final class AIService: @unchecked Sendable {
         let clipboard = Self.safeClipboardText()
         let promptText = Self.buildAutocompletePrompt(
             prefix: windowedPrefix,
+            suffix: windowedSuffix,
             recentMessages: recentMessages,
             appName: appName,
             clipboardText: clipboard
@@ -391,6 +393,7 @@ public final class AIService: @unchecked Sendable {
                 temperature: 0.2,
                 topP: 0.9,
                 topK: nil,
+                repeatPenalty: 1.15,
                 numPredict: lengthConfig.numPredict,
                 stop: ["\n", "\r", "<|im_end|>", "<|endoftext|>", "```"]
             ),
@@ -443,12 +446,14 @@ public final class AIService: @unchecked Sendable {
 
     public static func buildAutocompletePrompt(
         prefix: String,
+        suffix: String = "",
         recentMessages: [String] = [],
         appName: String? = nil,
         clipboardText: String? = nil
     ) -> String {
         let trimmedPrefix = CaretBoundary.trimmingTrailingWhitespace(prefix)
         guard !trimmedPrefix.isEmpty else { return "" }
+        let trimmedSuffix = suffix.trimmingCharacters(in: .whitespacesAndNewlines)
 
         var userLines: [String] = []
         let history = recentMessages
@@ -465,7 +470,13 @@ public final class AIService: @unchecked Sendable {
             userLines.append("Nội dung vừa sao chép (tham khảo nếu liên quan):")
             userLines.append(clip)
         }
-        userLines.append("Viết tiếp câu đang gõ bằng tiếng Việt:")
+        if !trimmedSuffix.isEmpty {
+            userLines.append("Đoạn văn tiếp theo ngay sau con trỏ (tránh lặp lại):")
+            userLines.append(trimmedSuffix)
+            userLines.append("Viết tiếp phần nối ở giữa câu bằng tiếng Việt:")
+        } else {
+            userLines.append("Viết tiếp câu đang gõ bằng tiếng Việt:")
+        }
         let userContent = userLines.joined(separator: "\n")
 
         return """
@@ -571,12 +582,14 @@ public final class AIService: @unchecked Sendable {
             let temperature: Double
             let topP: Double?
             let topK: Int?
+            let repeatPenalty: Double?
             let numPredict: Int
             let stop: [String]
             enum CodingKeys: String, CodingKey {
                 case temperature
                 case topP = "top_p"
                 case topK = "top_k"
+                case repeatPenalty = "repeat_penalty"
                 case numPredict = "num_predict"
                 case stop
             }

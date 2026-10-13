@@ -83,8 +83,8 @@ public final class GhostTextManager: ObservableObject {
             return
         }
 
-        // Skip secure/password fields or very short context
-        if context.isSecure || context.prefixText.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 {
+        // Smart suppression check: skip secure fields, URLs, code, or completed sentences
+        if context.isSecure || Self.shouldSuppress(prefixText: context.prefixText) {
             dismiss()
             return
         }
@@ -215,6 +215,67 @@ public final class GhostTextManager: ObservableObject {
         let accepted = snapshotSuggestion
         snapshotSuggestion = ""
         return accepted
+    }
+
+    public nonisolated static func acceptNextWordFromHook(keyCode: UInt16, flags: CGEventFlags) -> (head: String, rest: String)? {
+        // Option + Right Arrow (keyCode 124 = right arrow, modifier: maskAlternate)
+        let modifierMask: CGEventFlags = [.maskShift, .maskControl, .maskAlternate, .maskCommand, .maskSecondaryFn]
+        let currentModifiers = flags.intersection(modifierMask)
+        guard keyCode == 124, currentModifiers == .maskAlternate else { return nil }
+
+        snapshotLock.lock()
+        defer { snapshotLock.unlock() }
+        guard !snapshotSuggestion.isEmpty else { return nil }
+
+        let (head, rest) = NextWordSplitter.split(snapshotSuggestion)
+        guard !head.isEmpty else { return nil }
+        snapshotSuggestion = rest
+        return (head, rest)
+    }
+
+    public func updateRemainingSuggestion(_ rest: String) {
+        currentSuggestion = rest
+        if rest.isEmpty {
+            dismiss()
+        } else {
+            if let context = readCaretContext() {
+                show(suggestion: rest, at: context.caretRect)
+            } else {
+                dismiss()
+            }
+        }
+    }
+
+    /// Bộ lọc Smart Suppression: ngăn gợi ý không cần thiết khi gõ URL, code, số hoặc sau dấu chấm
+    public nonisolated static func shouldSuppress(prefixText: String) -> Bool {
+        let trimmed = prefixText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.count < 3 { return true }
+
+        // 1. Dấu câu kết thúc đoạn văn và chưa có chữ mới
+        if let lastChar = trimmed.last, [".", "!", "?", ";", ":"].contains(lastChar) {
+            return true
+        }
+
+        // 2. URL hoặc Email
+        let lower = trimmed.lowercased()
+        if lower.contains("http://") || lower.contains("https://") || lower.contains("www.") ||
+           (trimmed.contains("@") && !trimmed.contains(" ") && trimmed.count > 5) {
+            return true
+        }
+
+        // 3. Chuỗi số điện thoại / OTP / mã số
+        if trimmed.suffix(6).allSatisfy({ $0.isNumber || $0 == " " }) && trimmed.filter(\.isNumber).count >= 4 {
+            return true
+        }
+
+        // 4. Cú pháp lập trình / lệnh dòng lệnh
+        if lower.hasPrefix("import ") || lower.hasPrefix("func ") || lower.hasPrefix("class ") ||
+           lower.hasPrefix("def ") || lower.hasPrefix("const ") || lower.hasPrefix("let ") ||
+           lower.hasPrefix("git ") || lower.hasPrefix("curl ") {
+            return true
+        }
+
+        return false
     }
 
     private func loadShortcut() -> KeyboardShortcut {
@@ -494,13 +555,13 @@ final class GhostTextOverlayWindow: NSPanel {
         if let data = UserDefaults.standard.data(forKey: GhostTextManager.acceptShortcutKey),
            let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data) {
             if shortcut.keyCode == 0x30 && shortcut.modifiers == 0 {
-                badge.stringValue = "Tab ⇥"
+                badge.stringValue = "Tab ⇥ | ⌥→ từ"
             } else {
                 let parts = shortcut.displayParts.joined()
                 badge.stringValue = parts.isEmpty ? "⇥" : "\(parts) ⇥"
             }
         } else {
-            badge.stringValue = "Tab ⇥"
+            badge.stringValue = "Tab ⇥ | ⌥→ từ"
         }
     }
 

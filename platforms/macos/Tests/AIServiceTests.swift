@@ -100,6 +100,38 @@ final class AIServiceTests: XCTestCase {
         XCTAssertTrue(prompt.contains("<|im_start|>assistant\nem gửi anh link"))
     }
 
+    func testAutocompletePromptIncludesSuffixFIM() {
+        let prompt = AIService.buildAutocompletePrompt(
+            prefix: "Em đã gửi báo cáo",
+            suffix: "cho sếp rồi nhé ạ."
+        )
+        XCTAssertTrue(prompt.contains("Đoạn văn tiếp theo ngay sau con trỏ (tránh lặp lại):"))
+        XCTAssertTrue(prompt.contains("cho sếp rồi nhé ạ."))
+        XCTAssertTrue(prompt.contains("Viết tiếp phần nối ở giữa câu bằng tiếng Việt:"))
+        XCTAssertTrue(prompt.contains("<|im_start|>assistant\nEm đã gửi báo cáo"))
+    }
+
+    func testSmartSuppression() {
+        XCTAssertTrue(GhostTextManager.shouldSuppress(prefixText: "ab"))
+        XCTAssertTrue(GhostTextManager.shouldSuppress(prefixText: "Xin chào bạn."))
+        XCTAssertTrue(GhostTextManager.shouldSuppress(prefixText: "Hôm nay vui quá!"))
+        XCTAssertTrue(GhostTextManager.shouldSuppress(prefixText: "https://google.com/"))
+        XCTAssertTrue(GhostTextManager.shouldSuppress(prefixText: "0912345678"))
+        XCTAssertTrue(GhostTextManager.shouldSuppress(prefixText: "func myMethod()"))
+        XCTAssertFalse(GhostTextManager.shouldSuppress(prefixText: "mai mình "))
+        XCTAssertFalse(GhostTextManager.shouldSuppress(prefixText: "chiều nay họp "))
+    }
+
+    func testAcceptNextWordSplitting() {
+        let (head, rest) = NextWordSplitter.split("sẽ đi mua sắm")
+        XCTAssertEqual(head, "sẽ")
+        XCTAssertEqual(rest, " đi mua sắm")
+
+        let (head2, rest2) = NextWordSplitter.split(rest)
+        XCTAssertEqual(head2, " đi")
+        XCTAssertEqual(rest2, " mua sắm")
+    }
+
     func testCleanCompletionRejectsForeignScripts() {
         let cleanedChinese = AIService.cleanCompletion("một mùa新春快乐", prefix: "chúc bạn ", suffix: "")
         XCTAssertEqual(cleanedChinese, "")

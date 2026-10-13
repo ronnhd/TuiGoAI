@@ -1548,6 +1548,14 @@ private func keyboardCallback(
 
     let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
 
+    if let (head, rest) = GhostTextManager.acceptNextWordFromHook(keyCode: keyCode, flags: flags) {
+        injectGhostText(head, proxy: proxy)
+        DispatchQueue.main.async {
+            GhostTextManager.shared.updateRemainingSuggestion(rest)
+        }
+        return nil
+    }
+
     if let accepted = GhostTextManager.acceptSuggestionFromHook(keyCode: keyCode, flags: flags) {
         injectGhostText(accepted, proxy: proxy)
         DispatchQueue.main.async { GhostTextManager.shared.dismiss() }
