@@ -84,7 +84,7 @@ jobs:
 
           if [ -n "$APPLE_SIGNING_IDENTITY" ]; then
             echo "Building with Developer ID signing..."
-            xcodebuild -scheme GoNhanh -configuration Release \
+            xcodebuild -scheme TuiGoAI -configuration Release \
               -derivedDataPath build \
               CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
               DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
@@ -92,7 +92,7 @@ jobs:
               OTHER_CODE_SIGN_FLAGS="--options=runtime"
           else
             echo "Building with ad-hoc signing (no Apple Developer secrets configured)..."
-            xcodebuild -scheme GoNhanh -configuration Release \
+            xcodebuild -scheme TuiGoAI -configuration Release \
               -derivedDataPath build \
               CODE_SIGN_IDENTITY="-"
           fi
@@ -104,7 +104,7 @@ jobs:
         run: |
           cd platforms/macos
           V="${GITHUB_REF_NAME#v}"
-          APP="build/Build/Products/Release/GoNhanh.app"
+          APP="build/Build/Products/Release/TuiGoAI.app"
 
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $V" "$APP/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $V" "$APP/Contents/Info.plist"
@@ -118,19 +118,19 @@ jobs:
           CODE_SIGN_IDENTITY: ${{ env.APPLE_SIGNING_IDENTITY || '-' }}
         run: |
           cd platforms/macos
-          APP="build/Build/Products/Release/GoNhanh.app"
+          APP="build/Build/Products/Release/TuiGoAI.app"
 
           if [ -n "$APPLE_SIGNING_IDENTITY" ]; then
             echo "Signing with Developer ID and hardened runtime..."
             codesign --force --deep --sign "$CODE_SIGN_IDENTITY" \
-              --entitlements GoNhanh.entitlements.production \
+              --entitlements TuiGoAI.entitlements.production \
               --options runtime \
               --timestamp \
               "$APP"
           else
             echo "Signing with ad-hoc identity..."
             codesign --force --deep --sign - \
-              --entitlements GoNhanh.entitlements \
+              --entitlements TuiGoAI.entitlements \
               "$APP"
           fi
 
@@ -148,13 +148,13 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           cd platforms/macos
-          APP="build/Build/Products/Release/GoNhanh.app"
+          APP="build/Build/Products/Release/TuiGoAI.app"
 
           echo "Creating ZIP for notarization..."
-          ditto -c -k --keepParent "$APP" "GoNhanh-notarize.zip"
+          ditto -c -k --keepParent "$APP" "TuiGoAI-notarize.zip"
 
           echo "Submitting to Apple for notarization..."
-          xcrun notarytool submit "GoNhanh-notarize.zip" \
+          xcrun notarytool submit "TuiGoAI-notarize.zip" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_APP_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
@@ -206,7 +206,7 @@ jobs:
             echo "::warning::Notarization not completed within 30 min. Releasing unstapled DMG. Background job will update later."
           fi
 
-          rm -f "GoNhanh-notarize.zip"
+          rm -f "TuiGoAI-notarize.zip"
 
       - name: Upload Notarization Info
         if: ${{ env.APPLE_SIGNING_IDENTITY != '' && steps.notarize.outputs.stapled == 'false' }}
@@ -221,7 +221,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: signed-app
-          path: platforms/macos/build/Build/Products/Release/GoNhanh.app
+          path: platforms/macos/build/Build/Products/Release/TuiGoAI.app
           retention-days: 30
 
       # ============================================================
@@ -230,7 +230,7 @@ jobs:
       - name: Create DMG
         run: |
           cd platforms/macos
-          APP="build/Build/Products/Release/GoNhanh.app"
+          APP="build/Build/Products/Release/TuiGoAI.app"
           ../../scripts/release/dmg.sh "$APP"
 
       - name: Get Tag Message

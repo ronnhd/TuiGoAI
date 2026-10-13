@@ -29,7 +29,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: signed-app
-          path: GoNhanh.app
+          path: TuiGoAI.app
           run-id: ${{ inputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -82,18 +82,18 @@ jobs:
       - name: Staple Notarization Ticket
         run: |
           echo "Stapling notarization ticket..."
-          xcrun stapler staple "GoNhanh.app"
+          xcrun stapler staple "TuiGoAI.app"
 
           echo "Verifying..."
-          spctl -a -vvv -t install "GoNhanh.app"
-          echo "✅ Stapling successful!"
+          spctl -a -vvv -t install "TuiGoAI.app"
+          echo "Stapling successful!"
 
       - name: Create Notarized DMG
         run: |
           # Create output directory (script writes to platforms/macos/build/)
           mkdir -p platforms/macos/build
 
-          ./scripts/release/dmg.sh "GoNhanh.app"
+          ./scripts/release/dmg.sh "TuiGoAI.app"
           ls -la platforms/macos/build/*.dmg
 
       - name: Update Release Asset
@@ -107,7 +107,7 @@ jobs:
 
           # Delete old DMG asset
           ASSET_ID=$(gh api "repos/${{ github.repository }}/releases/tags/$TAG" \
-            --jq '.assets[] | select(.name == "GoNhanh.dmg") | .id' 2>/dev/null || echo "")
+            --jq '.assets[] | select(.name == "TuiGoAI.dmg") | .id' 2>/dev/null || echo "")
 
           if [ -n "$ASSET_ID" ]; then
             echo "Deleting old asset: $ASSET_ID"
@@ -117,5 +117,5 @@ jobs:
           # Upload new notarized DMG
           gh release upload "$TAG" "$DMG_FILE" --clobber
 
-          echo "✅ Release updated with notarized DMG!"
+          echo "Release updated with notarized DMG!"
           echo "::notice::Release $TAG now has notarized DMG"

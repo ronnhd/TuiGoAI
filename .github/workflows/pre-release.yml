@@ -104,7 +104,7 @@ jobs:
 
           if [ "$SHOULD_SIGN" = "true" ]; then
             echo "Building with Developer ID signing..."
-            xcodebuild -scheme GoNhanh -configuration Release \
+            xcodebuild -scheme TuiGoAI -configuration Release \
               -derivedDataPath build \
               CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
               DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
@@ -112,7 +112,7 @@ jobs:
               OTHER_CODE_SIGN_FLAGS="--options=runtime"
           else
             echo "Building with ad-hoc signing..."
-            xcodebuild -scheme GoNhanh -configuration Release \
+            xcodebuild -scheme TuiGoAI -configuration Release \
               -derivedDataPath build \
               CODE_SIGN_IDENTITY="-"
           fi
@@ -145,7 +145,7 @@ jobs:
       - name: Set version in app
         run: |
           cd platforms/macos
-          APP="build/Build/Products/Release/GoNhanh.app"
+          APP="build/Build/Products/Release/TuiGoAI.app"
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" "$APP/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.bundle_version }}" "$APP/Contents/Info.plist"
 
@@ -158,19 +158,19 @@ jobs:
           CODE_SIGN_IDENTITY: ${{ env.APPLE_SIGNING_IDENTITY || '-' }}
         run: |
           cd platforms/macos
-          APP="build/Build/Products/Release/GoNhanh.app"
+          APP="build/Build/Products/Release/TuiGoAI.app"
 
           if [ "$SHOULD_SIGN" = "true" ]; then
             echo "Signing with Developer ID and hardened runtime..."
             codesign --force --deep --sign "$CODE_SIGN_IDENTITY" \
-              --entitlements GoNhanh.entitlements.production \
+              --entitlements TuiGoAI.entitlements.production \
               --options runtime \
               --timestamp \
               "$APP"
           else
             echo "Signing with ad-hoc identity..."
             codesign --force --deep --sign - \
-              --entitlements GoNhanh.entitlements \
+              --entitlements TuiGoAI.entitlements \
               "$APP"
           fi
 
@@ -182,19 +182,19 @@ jobs:
       - name: Create DMG
         run: |
           cd platforms/macos
-          APP="build/Build/Products/Release/GoNhanh.app"
+          APP="build/Build/Products/Release/TuiGoAI.app"
           V="${{ steps.version.outputs.version }}"
 
           # Create DMG (version already set, app already signed)
           ../../scripts/release/dmg.sh "$APP" || {
             # Fallback: simple DMG if script fails
-            hdiutil create -volname "GoNhanh" -srcfolder "$APP" -ov -format UDZO "build/GoNhanh-${V}.dmg"
+            hdiutil create -volname "TuiGoAI" -srcfolder "$APP" -ov -format UDZO "build/TuiGoAI-${V}.dmg"
           }
 
-      - name: Upload DMG artifact
+      - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GoNhanh-${{ steps.version.outputs.version }}-macOS
+          name: TuiGoAI-${{ steps.version.outputs.version }}-macOS
           path: platforms/macos/build/*.dmg
           retention-days: 14
 
@@ -314,7 +314,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' || inputs.platform == 'macos' || inputs.platform == 'all' }}
         uses: actions/download-artifact@v4
         with:
-          name: GoNhanh-${{ needs.build-macos.outputs.version }}-macOS
+          name: TuiGoAI-${{ needs.build-macos.outputs.version }}-macOS
           path: artifacts/macos
 
       - name: Download Linux artifact
