@@ -27,6 +27,7 @@ public final class GhostTextManager: ObservableObject {
     nonisolated public static let aiEnabledKey = "tuigoai.ai.enabled"
     nonisolated public static let displayModeKey = "tuigoai.ai.display.mode"
     nonisolated public static let completionLengthKey = "tuigoai.ai.completion.length"
+    nonisolated public static let clipboardContextEnabledKey = "tuigoai.ai.context.clipboard"
 
     private init() {
         setupOverlay()
@@ -164,6 +165,12 @@ public final class GhostTextManager: ObservableObject {
     public func acceptSuggestion() -> String? {
         guard isShowing, !currentSuggestion.isEmpty else { return nil }
         let acceptedText = currentSuggestion
+        if let context = readCaretContext(), let bundle = context.bundleId {
+            let fullSentence = (context.prefixText + acceptedText).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !fullSentence.isEmpty {
+                ChatHistoryBuffer.shared.record(text: fullSentence, bundleId: bundle)
+            }
+        }
         dismiss()
         return acceptedText
     }

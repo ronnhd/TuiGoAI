@@ -10,6 +10,7 @@ struct AISettingsView: View {
     @State private var modelToDelete: OllamaModelInfo?
     @AppStorage(GhostTextManager.displayModeKey) private var displayMode = "inline"
     @AppStorage(GhostTextManager.completionLengthKey) private var completionLength = "medium"
+    @AppStorage(GhostTextManager.clipboardContextEnabledKey) private var clipboardContextEnabled = true
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -66,6 +67,14 @@ struct AISettingsView: View {
                             .pickerStyle(.segmented)
                             .frame(width: 175)
                         }
+
+                        Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                        SettingToggleRow(
+                            title: "Ngữ cảnh Clipboard",
+                            description: "Sử dụng liên kết, tên hoặc văn bản ngắn vừa sao chép để tăng độ chính xác khi gợi ý.",
+                            isOn: $clipboardContextEnabled
+                        )
                     }
                     .flatCard()
                 }

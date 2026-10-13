@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 // MARK: - AI Models & Enums
@@ -369,13 +370,15 @@ public final class AIService: @unchecked Sendable {
         let windowedPrefix = String(trimmedPrefix.suffix(2000))
 
         var recentMessages: [String] = []
-        if let bundle = bundleId, ChatHistoryBuffer.isChatApp(bundle) {
+        if let bundle = bundleId {
             recentMessages = ChatHistoryBuffer.shared.recentHistory(for: bundle)
         }
+        let clipboard = Self.safeClipboardText()
         let promptText = Self.buildAutocompletePrompt(
             prefix: windowedPrefix,
             recentMessages: recentMessages,
-            appName: appName
+            appName: appName,
+            clipboardText: clipboard
         )
 
         let endpoint = URL(string: "http://localhost:11434/api/generate")!
@@ -418,10 +421,31 @@ public final class AIService: @unchecked Sendable {
         return cleaned
     }
 
+    /// Trích xuất nội dung Clipboard an toàn dùng làm ngữ cảnh gợi ý (liên kết, tên, địa chỉ, mã số)
+    public static func safeClipboardText() -> String? {
+        if UserDefaults.standard.object(forKey: GhostTextManager.clipboardContextEnabledKey) != nil {
+            guard UserDefaults.standard.bool(forKey: GhostTextManager.clipboardContextEnabledKey) else {
+                return nil
+            }
+        }
+        guard let raw = NSPasteboard.general.string(forType: .string) else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Giới hạn chiều dài: từ 4 đến 300 ký tự
+        guard trimmed.count >= 4, trimmed.count <= 300 else { return nil }
+        // Giới hạn dòng: tối đa 3 dòng (tránh paste cả văn bản dài)
+        guard trimmed.components(separatedBy: .newlines).count <= 3 else { return nil }
+        // Bộ lọc an toàn: bỏ qua chuỗi trông giống secret/token
+        if trimmed.hasPrefix("sk-") || trimmed.hasPrefix("ghp_") || trimmed.hasPrefix("eyJh") {
+            return nil
+        }
+        return trimmed
+    }
+
     public static func buildAutocompletePrompt(
         prefix: String,
         recentMessages: [String] = [],
-        appName: String? = nil
+        appName: String? = nil,
+        clipboardText: String? = nil
     ) -> String {
         let trimmedPrefix = CaretBoundary.trimmingTrailingWhitespace(prefix)
         guard !trimmedPrefix.isEmpty else { return "" }
@@ -432,17 +456,21 @@ public final class AIService: @unchecked Sendable {
             .filter { !$0.isEmpty }
             .suffix(3)
         if !history.isEmpty {
-            userLines.append("Các câu vừa chat gần đây:")
+            userLines.append("Các câu người dùng vừa viết gần đây:")
             for msg in history {
                 userLines.append("- \(msg)")
             }
+        }
+        if let clip = clipboardText?.trimmingCharacters(in: .whitespacesAndNewlines), !clip.isEmpty, clip != trimmedPrefix {
+            userLines.append("Nội dung vừa sao chép (tham khảo nếu liên quan):")
+            userLines.append(clip)
         }
         userLines.append("Viết tiếp câu đang gõ bằng tiếng Việt:")
         let userContent = userLines.joined(separator: "\n")
 
         return """
         <|im_start|>system
-        Bạn là bộ gõ tiếng Việt. Bạn chỉ viết tiếp câu bằng tiếng Việt tự nhiên (chữ Quốc ngữ). Không dùng tiếng nước ngoài, không lặp lại từ đã có.<|im_end|>
+        Bạn là bộ gõ tiếng Việt. Bạn chỉ viết tiếp câu bằng tiếng Việt tự nhiên (chữ Quốc ngữ). Không dùng tiếng nước ngoài, không lặp lại từ đã có. Giữ đúng phong cách và xưng hô của người dùng.<|im_end|>
         <|im_start|>user
         \(userContent)<|im_end|>
         <|im_start|>assistant

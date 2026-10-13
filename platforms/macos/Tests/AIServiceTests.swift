@@ -84,10 +84,20 @@ final class AIServiceTests: XCTestCase {
         // Ensure app name does not leak into the prompt to prevent LLM topic bias
         XCTAssertFalse(prompt.contains("Telegram"))
         XCTAssertFalse(prompt.contains("Ứng dụng:"))
-        XCTAssertTrue(prompt.contains("Các câu vừa chat gần đây:"))
+        XCTAssertTrue(prompt.contains("Các câu người dùng vừa viết gần đây:"))
         XCTAssertTrue(prompt.contains("- Chào bạn, hôm nay có họp không?"))
         XCTAssertTrue(prompt.contains("- Tôi vừa gửi file qua email"))
         XCTAssertTrue(prompt.contains("<|im_start|>assistant\ncòn họp lúc"))
+    }
+
+    func testAutocompletePromptIncludesClipboardContext() {
+        let prompt = AIService.buildAutocompletePrompt(
+            prefix: "em gửi anh link",
+            clipboardText: "https://meet.google.com/xyz"
+        )
+        XCTAssertTrue(prompt.contains("Nội dung vừa sao chép (tham khảo nếu liên quan):"))
+        XCTAssertTrue(prompt.contains("https://meet.google.com/xyz"))
+        XCTAssertTrue(prompt.contains("<|im_start|>assistant\nem gửi anh link"))
     }
 
     func testCleanCompletionRejectsForeignScripts() {

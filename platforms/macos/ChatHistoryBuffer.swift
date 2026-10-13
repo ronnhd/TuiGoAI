@@ -43,7 +43,14 @@ public final class ChatHistoryBuffer: @unchecked Sendable {
         defer { lock.unlock() }
 
         pruneExpiredLocked()
-        return (historyByBundle[bundleId] ?? []).map(\.text)
+        if let specific = historyByBundle[bundleId], !specific.isEmpty {
+            return specific.map(\.text)
+        }
+        // Fallback: Nếu bundle hiện tại chưa có câu nào, lấy 2 câu gần nhất trên toàn hệ thống để giữ văn phong xưng hô
+        let all = historyByBundle.values.flatMap { $0 }
+            .sorted { $0.timestamp < $1.timestamp }
+            .suffix(2)
+        return all.map(\.text)
     }
 
     /// Xóa lịch sử khi người dùng muốn xóa bộ đệm
