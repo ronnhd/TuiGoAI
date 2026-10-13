@@ -68,6 +68,27 @@ final class AIServiceTests: XCTestCase {
         XCTAssertFalse(AIRewriteTone.elaborate.promptInstruction.isEmpty)
     }
 
+    func testAutocompleteUserPromptKeepsPrefixAsPlainText() {
+        let prompt = AIService.buildAutocompleteUserPrompt(prefix: "mai mình")
+        XCTAssertTrue(prompt.contains("Đang gõ:\nmai mình"))
+        XCTAssertTrue(prompt.contains("Viết tiếp phần mới, không lặp lại."))
+        XCTAssertFalse(prompt.contains("- mai mình"))
+    }
+
+    func testAutocompleteUserPromptJoinsChatHistoryWithoutBullets() {
+        let prompt = AIService.buildAutocompleteUserPrompt(
+            prefix: "còn họp lúc",
+            recentMessages: ["Chào bạn, hôm nay có họp không?", "Tôi vừa gửi file qua email"],
+            appName: "Telegram"
+        )
+        XCTAssertTrue(prompt.contains("Ứng dụng: Telegram."))
+        XCTAssertTrue(prompt.contains("Các câu tôi vừa gửi:"))
+        XCTAssertTrue(prompt.contains("Chào bạn, hôm nay có họp không?\nTôi vừa gửi file qua email"))
+        XCTAssertTrue(prompt.contains("Đang gõ:\ncòn họp lúc"))
+        XCTAssertFalse(prompt.contains("- Chào bạn"))
+        XCTAssertFalse(prompt.contains("- còn họp lúc"))
+    }
+
     // MARK: - AutocompleteCore Tests (KeyType ported)
 
     func testCaretBoundaryTrimming() {

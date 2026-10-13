@@ -101,6 +101,7 @@ Tài liệu chi tiết kỹ thuật và luồng vận hành cho 9 tính năng AI
    - Khi người dùng nhắn tin trong các ứng dụng chat (Telegram, Zalo, Slack, Discord, Messages), việc gửi tin nhắn bằng phím `Enter` sẽ tự động lưu 3–4 câu gần nhất của người dùng vào bộ nhớ đệm RAM (tự hủy sau 5 phút).
    - Khi gõ câu tiếp theo trong cùng ứng dụng, các câu thoại trước đó được đưa vào prompt ngữ cảnh để AI suy luận tiếp mạch hội thoại của chính người dùng một cách ăn khớp, không bị lạc đề hay ngẫu nhiên.
    - Hoàn toàn bảo vệ quyền riêng tư: Không đọc trộm tin nhắn của người khác, không lưu vào ổ cứng hay gửi ra Internet.
-3. **Bộ tham số Sampling tối ưu cho tiếng Việt**:
+3. **Instruct completion qua `/api/chat`**: Qwen 2.5 là mô hình instruct. Gửi system prompt tiếng Việt (chỉ trả phần tiếp theo, giữ xưng hô, không lặp prefix) thay vì raw continuation. Lịch sử chat đưa vào prompt thành đoạn văn thường, không bullet list.
+4. **Bộ tham số Sampling tối ưu cho tiếng Việt**:
    - `temperature: 0.1`: Loại bỏ sự ngẫu nhiên, tập trung vào các kết hợp từ vựng tiếng Việt có xác suất xuất hiện cao nhất và chuẩn ngữ pháp.
    - `top_p: 0.8` và `top_k: 20`: Loại trừ triệt để các token dịch máy kỳ dị hoặc ảo giác.

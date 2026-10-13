@@ -368,27 +368,25 @@ public final class AIService: @unchecked Sendable {
         guard !trimmedPrefix.isEmpty else { throw AIError.noResponse }
         let windowedPrefix = String(trimmedPrefix.suffix(2000))
 
-        // Xây dựng prompt: nếu người dùng đang chat và có tin nhắn vừa gửi gần đây
-        var promptText = windowedPrefix
+        var recentMessages: [String] = []
         if let bundle = bundleId, ChatHistoryBuffer.isChatApp(bundle) {
-            let history = ChatHistoryBuffer.shared.recentHistory(for: bundle)
-            if !history.isEmpty {
-                var contextBlock = ""
-                for msg in history.suffix(3) {
-                    contextBlock += "- \(msg)\n"
-                }
-                contextBlock += "- \(windowedPrefix)"
-                promptText = contextBlock
-            }
+            recentMessages = ChatHistoryBuffer.shared.recentHistory(for: bundle)
         }
+        let userPrompt = Self.buildAutocompleteUserPrompt(
+            prefix: windowedPrefix,
+            recentMessages: recentMessages,
+            appName: appName
+        )
 
-        let endpoint = URL(string: "http://localhost:11434/api/generate")!
-        let payload = OllamaGenerateRequest(
+        let endpoint = URL(string: "http://localhost:11434/api/chat")!
+        let payload = OllamaChatRequest(
             model: model,
-            prompt: promptText,
-            raw: true,
+            messages: [
+                OllamaChatRequest.Message(role: "system", content: Self.autocompleteSystemPrompt),
+                OllamaChatRequest.Message(role: "user", content: userPrompt)
+            ],
             stream: false,
-            options: OllamaGenerateRequest.Options(
+            options: OllamaChatRequest.Options(
                 temperature: 0.1,
                 topP: 0.8,
                 topK: 20,
@@ -415,11 +413,39 @@ public final class AIService: @unchecked Sendable {
         guard (200 ... 299).contains(http.statusCode) else {
             throw AIError.httpError(statusCode: http.statusCode, message: String(data: data, encoding: .utf8) ?? "Ollama error")
         }
-        let result = try JSONDecoder().decode(OllamaGenerateResponse.self, from: data)
-        guard let raw = result.response, !raw.isEmpty else { throw AIError.noResponse }
+        let result = try JSONDecoder().decode(OllamaChatResponse.self, from: data)
+        guard let raw = result.message?.content, !raw.isEmpty else { throw AIError.noResponse }
         let cleaned = Self.cleanCompletion(raw, prefix: prefixText, suffix: suffixText, maxWords: lengthConfig.maxWords)
         guard !cleaned.isEmpty else { throw AIError.noResponse }
         return cleaned
+    }
+
+    static let autocompleteSystemPrompt = """
+    Bạn là bộ gõ tiếng Việt. Viết tiếp đúng văn đang gõ.
+    Chỉ trả phần tiếp theo (vài từ). Không lặp lại đoạn đã gõ. Giữ xưng hô và giọng đang dùng. Không giải thích, không ngoặc kép, không xuống dòng.
+    """
+
+    static func buildAutocompleteUserPrompt(
+        prefix: String,
+        recentMessages: [String] = [],
+        appName: String? = nil
+    ) -> String {
+        var parts: [String] = []
+        if let appName, !appName.isEmpty {
+            parts.append("Ứng dụng: \(appName).")
+        }
+        let history = recentMessages
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .suffix(3)
+        if !history.isEmpty {
+            parts.append("Các câu tôi vừa gửi:")
+            parts.append(history.joined(separator: "\n"))
+        }
+        parts.append("Đang gõ:")
+        parts.append(prefix)
+        parts.append("Viết tiếp phần mới, không lặp lại.")
+        return parts.joined(separator: "\n")
     }
 
     static func cleanCompletion(_ raw: String, prefix: String, suffix: String, maxWords: Int = 8) -> String {
@@ -465,7 +491,11 @@ public final class AIService: @unchecked Sendable {
         return CaretBoundary.reconcile(joined, beforeCursor: prefix)
     }
 
-    private struct OllamaGenerateRequest: Encodable {
+    private struct OllamaChatRequest: Encodable {
+        struct Message: Encodable {
+            let role: String
+            let content: String
+        }
         struct Options: Encodable {
             let temperature: Double
             let topP: Double?
@@ -481,18 +511,21 @@ public final class AIService: @unchecked Sendable {
             }
         }
         let model: String
-        let prompt: String
-        let raw: Bool
+        let messages: [Message]
         let stream: Bool
         let options: Options
         let keepAlive: String
         enum CodingKeys: String, CodingKey {
-            case model, prompt, raw, stream, options
+            case model, messages, stream, options
             case keepAlive = "keep_alive"
         }
     }
 
-    private struct OllamaGenerateResponse: Decodable {
-        let response: String?
+    private struct OllamaChatResponse: Decodable {
+        struct Message: Decodable {
+            let role: String?
+            let content: String?
+        }
+        let message: Message?
     }
 }
