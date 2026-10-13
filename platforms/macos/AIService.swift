@@ -350,7 +350,12 @@ public final class AIService: @unchecked Sendable {
 
     // MARK: - Foundation Feature: Ghost Text Autocomplete
 
-    public func suggestCompletion(prefixText: String, suffixText: String = "") async throws -> String {
+    public func suggestCompletion(
+        prefixText: String,
+        suffixText: String = "",
+        appName: String? = nil,
+        bundleId: String? = nil
+    ) async throws -> String {
         let config = loadConfig()
         guard config.isEnabled else { throw AIError.serviceDisabled }
         let model = config.model.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -363,10 +368,24 @@ public final class AIService: @unchecked Sendable {
         guard !trimmedPrefix.isEmpty else { throw AIError.noResponse }
         let windowedPrefix = String(trimmedPrefix.suffix(2000))
 
+        // Xây dựng prompt: nếu người dùng đang chat và có tin nhắn vừa gửi gần đây
+        var promptText = windowedPrefix
+        if let bundle = bundleId, ChatHistoryBuffer.isChatApp(bundle) {
+            let history = ChatHistoryBuffer.shared.recentHistory(for: bundle)
+            if !history.isEmpty {
+                var contextBlock = ""
+                for msg in history.suffix(3) {
+                    contextBlock += "- \(msg)\n"
+                }
+                contextBlock += "- \(windowedPrefix)"
+                promptText = contextBlock
+            }
+        }
+
         let endpoint = URL(string: "http://localhost:11434/api/generate")!
         let payload = OllamaGenerateRequest(
             model: model,
-            prompt: windowedPrefix,
+            prompt: promptText,
             raw: true,
             stream: false,
             options: OllamaGenerateRequest.Options(

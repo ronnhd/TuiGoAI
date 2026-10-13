@@ -92,5 +92,15 @@ Tài liệu chi tiết kỹ thuật và luồng vận hành cho 9 tính năng AI
 ---
 
 ## Tính năng nền tảng: Gợi ý câu tự động (Ghost Text Autocomplete)
-- Khi người dùng gõ từ 3-5 từ và tạm dừng gõ khoảng 1 giây, hệ thống tự động suy luận phần tiếp theo của câu và hiển thị dưới dạng chữ xám mờ.
-- Nhấn `Tab` để nhận toàn bộ gợi ý. Nếu tiếp tục gõ chữ khác, gợi ý cũ tự động biến mất và tính toán lại theo văn bản mới.
+- Khi người dùng gõ từ 3 từ trở lên và tạm dừng gõ (debounce 300ms), hệ thống tự động suy luận phần tiếp theo của câu và hiển thị dưới dạng chữ xám mờ (Inline) hoặc thẻ nổi (Pill).
+- Nhấn `Tab` (hoặc phím tắt tự chọn) để nhận toàn bộ gợi ý. Nếu tiếp tục gõ chữ khác, gợi ý cũ tự động biến mất và tính toán lại theo văn bản mới.
+
+### Cơ chế gom ngữ cảnh thông minh (Context Enrichment Engine)
+1. **Window Context 2.000 ký tự**: Đọc tối đa 2.000 ký tự trước con trỏ (thay vì 240 ký tự) và 500 ký tự sau con trỏ qua macOS Accessibility API. Đảm bảo mô hình LLM hiểu trọn vẹn chủ đề bài viết và đại từ xưng hô.
+2. **Bộ đệm hội thoại tức thời (Ephemeral My-Chat Memory)**:
+   - Khi người dùng nhắn tin trong các ứng dụng chat (Telegram, Zalo, Slack, Discord, Messages), việc gửi tin nhắn bằng phím `Enter` sẽ tự động lưu 3–4 câu gần nhất của người dùng vào bộ nhớ đệm RAM (tự hủy sau 5 phút).
+   - Khi gõ câu tiếp theo trong cùng ứng dụng, các câu thoại trước đó được đưa vào prompt ngữ cảnh để AI suy luận tiếp mạch hội thoại của chính người dùng một cách ăn khớp, không bị lạc đề hay ngẫu nhiên.
+   - Hoàn toàn bảo vệ quyền riêng tư: Không đọc trộm tin nhắn của người khác, không lưu vào ổ cứng hay gửi ra Internet.
+3. **Bộ tham số Sampling tối ưu cho tiếng Việt**:
+   - `temperature: 0.1`: Loại bỏ sự ngẫu nhiên, tập trung vào các kết hợp từ vựng tiếng Việt có xác suất xuất hiện cao nhất và chuẩn ngữ pháp.
+   - `top_p: 0.8` và `top_k: 20`: Loại trừ triệt để các token dịch máy kỳ dị hoặc ảo giác.

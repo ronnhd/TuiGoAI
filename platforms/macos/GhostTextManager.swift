@@ -94,7 +94,9 @@ public final class GhostTextManager: ObservableObject {
             do {
                 let suggestion = try await AIService.shared.suggestCompletion(
                     prefixText: context.prefixText,
-                    suffixText: context.suffixText
+                    suffixText: context.suffixText,
+                    appName: context.appName,
+                    bundleId: context.bundleId
                 )
                 guard !Task.isCancelled, self.contextGeneration == generation else { return }
 
@@ -134,6 +136,16 @@ public final class GhostTextManager: ObservableObject {
         Self.snapshotSuggestion = ""
         Self.snapshotLock.unlock()
         overlayWindow?.hide()
+    }
+
+    /// Xử lý khi người dùng bấm phím Enter/Return (gửi tin nhắn trong app chat)
+    public func handleReturnKey() {
+        guard let context = readCaretContext() else { return }
+        let text = context.prefixText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !text.isEmpty, let bundle = context.bundleId {
+            ChatHistoryBuffer.shared.record(text: text, bundleId: bundle)
+        }
+        dismiss()
     }
 
     public nonisolated static func invalidateSuggestionFromHook() {
@@ -214,9 +226,15 @@ public final class GhostTextManager: ObservableObject {
         public let suffixText: String
         public let caretRect: CGRect?
         public let isSecure: Bool
+        public let bundleId: String?
+        public let appName: String?
     }
 
     public func readCaretContext() -> CaretContext? {
+        let frontApp = NSWorkspace.shared.frontmostApplication
+        let currentBundleId = frontApp?.bundleIdentifier
+        let currentAppName = frontApp?.localizedName
+
         var focusedAppValue: CFTypeRef?
         let appErr = AXUIElementCopyAttributeValue(axSystemWide, kAXFocusedApplicationAttribute as CFString, &focusedAppValue)
         guard appErr == .success, let focusedApp = focusedAppValue else {
@@ -241,7 +259,7 @@ public final class GhostTextManager: ObservableObject {
 
         let isSecureRole = (subroleValue as? String) == "AXSecureTextField" || (roleValue as? String) == "AXSecureTextField"
         if isSecureRole {
-            return CaretContext(prefixText: "", suffixText: "", caretRect: nil, isSecure: true)
+            return CaretContext(prefixText: "", suffixText: "", caretRect: nil, isSecure: true, bundleId: currentBundleId, appName: currentAppName)
         }
 
         // Get selected text range (or caret location)
@@ -299,7 +317,7 @@ public final class GhostTextManager: ObservableObject {
         // Some Electron/WebKit text fields expose text and selection but do not
         // implement kAXBoundsForRangeParameterizedAttribute. Keep the context
         // usable; the overlay will fall back to the current mouse position.
-        return CaretContext(prefixText: prefixText, suffixText: suffixText, caretRect: caretRect, isSecure: false)
+        return CaretContext(prefixText: prefixText, suffixText: suffixText, caretRect: caretRect, isSecure: false, bundleId: currentBundleId, appName: currentAppName)
     }
 }
 

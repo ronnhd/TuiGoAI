@@ -1596,6 +1596,12 @@ private func keyboardCallback(
     // then clear buffer. Engine sets pending_capitalize when it sees Enter key.
     // Also handle auto-restore and shortcut results (same as ESC handling)
     if keyCode == 0x24 || keyCode == 0x4C { // Return (0x24) or Enter/Numpad (0x4C)
+        if !shift && !hasOption && !flags.contains(.maskCommand) {
+            DispatchQueue.main.async {
+                GhostTextManager.shared.handleReturnKey()
+            }
+        }
+
         if isDiscordFocusedContext() {
             RustBridge.clearBufferAll()
             return Unmanaged.passUnretained(event)
