@@ -107,7 +107,8 @@ public final class GhostTextManager: ObservableObject {
                     return
                 }
 
-                self.show(suggestion: cleanSuggestion, at: context.caretRect)
+                let isMidLine = !context.suffixText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                self.show(suggestion: cleanSuggestion, at: context.caretRect, isMidLine: isMidLine)
             } catch {
                 // Fail silently on timeout or network cancel
                 self.dismiss()
@@ -117,13 +118,13 @@ public final class GhostTextManager: ObservableObject {
 
     // MARK: - Display & Dismiss
 
-    public func show(suggestion: String, at caretRect: CGRect?) {
+    public func show(suggestion: String, at caretRect: CGRect?, isMidLine: Bool = false) {
         self.currentSuggestion = suggestion
         self.isShowing = true
         Self.snapshotLock.lock()
         Self.snapshotSuggestion = suggestion
         Self.snapshotLock.unlock()
-        overlayWindow?.display(text: suggestion, at: caretRect)
+        overlayWindow?.display(text: suggestion, at: caretRect, isMidLine: isMidLine)
     }
 
     public func dismiss() {
@@ -239,7 +240,8 @@ public final class GhostTextManager: ObservableObject {
             dismiss()
         } else {
             if let context = readCaretContext() {
-                show(suggestion: rest, at: context.caretRect)
+                let isMidLine = !context.suffixText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                show(suggestion: rest, at: context.caretRect, isMidLine: isMidLine)
             } else {
                 dismiss()
             }
@@ -311,13 +313,24 @@ public final class GhostTextManager: ObservableObject {
         guard CFGetTypeID(focusedApp) == AXUIElementGetTypeID() else { return nil }
         let focusedAppElement = unsafeBitCast(focusedApp, to: AXUIElement.self)
 
+        // Enable Enhanced User Interface for Chromium / WebKit to calculate character metrics
+        AXUIElementSetAttributeValue(focusedAppElement, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
+
         var focusedElementValue: CFTypeRef?
         let elemErr = AXUIElementCopyAttributeValue(focusedAppElement, kAXFocusedUIElementAttribute as CFString, &focusedElementValue)
         guard elemErr == .success, let focusedElement = focusedElementValue else {
             return nil
         }
         guard CFGetTypeID(focusedElement) == AXUIElementGetTypeID() else { return nil }
-        let element = unsafeBitCast(focusedElement, to: AXUIElement.self)
+        var element = unsafeBitCast(focusedElement, to: AXUIElement.self)
+
+        // In Chromium / WebKit, if focusedElement is a WebArea or container, resolve active inner text element
+        var innerFocusValue: CFTypeRef?
+        if AXUIElementCopyAttributeValue(element, kAXFocusedUIElementAttribute as CFString, &innerFocusValue) == .success,
+           let innerFocus = innerFocusValue,
+           CFGetTypeID(innerFocus) == AXUIElementGetTypeID() {
+            element = unsafeBitCast(innerFocus, to: AXUIElement.self)
+        }
 
         // Check if secure field (password)
         var roleValue: CFTypeRef?
@@ -360,7 +373,6 @@ public final class GhostTextManager: ObservableObject {
         let suffixText = String(afterCaret.prefix(500))
 
         // Bounds for caret position to anchor floating overlay.
-        // Bounds for caret position to anchor floating overlay.
         var caretRect: CGRect?
 
         func queryBounds(range: CFRange) -> CGRect? {
@@ -378,18 +390,25 @@ public final class GhostTextManager: ObservableObject {
             let boundsAXValue = unsafeBitCast(boundsVal, to: AXValue.self)
             var rect = CGRect.zero
             if AXValueGetType(boundsAXValue) == .cgRect,
-               AXValueGetValue(boundsAXValue, .cgRect, &rect),
-               !rect.isEmpty {
+               AXValueGetValue(boundsAXValue, .cgRect, &rect) {
+                if rect.isNull || rect.isInfinite || rect.height <= 0 {
+                    return nil
+                }
+                // Zero-length selection legitimately has width <= 0 in Cocoa / Blink
+                if rect.width <= 0 {
+                    rect.size.width = 2
+                }
                 return rect
             }
             return nil
         }
 
-        // 1. Try zero-length caret rect
-        if let rect = queryBounds(range: selectedRange) {
+        // 1. Try zero-length caret rect (valid caret rect has width <= 5)
+        if let rect = queryBounds(range: selectedRange), rect.width <= 5 {
             caretRect = rect
         } else if selectedRange.location > 0 {
-            // 2. Fallback for WebKit / Electron / Chromium: bounds of the character immediately before caret
+            // 2. Character-bounds fallback for WebKit / Electron / Chromium:
+            // Query bounds of single character immediately preceding the caret
             if let charRect = queryBounds(range: CFRange(location: selectedRange.location - 1, length: 1)) {
                 caretRect = CGRect(x: charRect.maxX, y: charRect.origin.y, width: 2, height: charRect.height)
             }
@@ -400,7 +419,7 @@ public final class GhostTextManager: ObservableObject {
             }
         }
 
-        // 4. Fallback for fields where kAXBoundsForRange is not supported: anchor to focused element frame
+        // 4. Fallback for fields where kAXBoundsForRange is not supported: anchor using element frame + text width
         if caretRect == nil {
             var posValue: CFTypeRef?
             var sizeValue: CFTypeRef?
@@ -415,7 +434,16 @@ public final class GhostTextManager: ObservableObject {
                    AXValueGetValue(axPos, .cgPoint, &pos),
                    AXValueGetValue(axSize, .cgSize, &size),
                    size.width > 10, size.height > 0 {
-                    caretRect = CGRect(x: pos.x + 8, y: pos.y + max(0, size.height - 24), width: 2, height: min(size.height, 22))
+                    let lastLine = prefixText.components(separatedBy: .newlines).last ?? prefixText
+                    let font = NSFont.systemFont(ofSize: 13)
+                    let textWidth = (lastLine as NSString).size(withAttributes: [.font: font]).width
+                    let estimatedX = min(pos.x + 8 + textWidth, pos.x + size.width - 24)
+                    caretRect = CGRect(
+                        x: max(pos.x + 8, estimatedX),
+                        y: pos.y + max(0, size.height - 24),
+                        width: 2,
+                        height: min(size.height, 22)
+                    )
                 }
             }
         }
@@ -492,22 +520,22 @@ final class GhostTextOverlayWindow: NSPanel {
         contentView = container
     }
 
-    func display(text: String, at caretRect: CGRect?) {
+    func display(text: String, at caretRect: CGRect?, isMidLine: Bool = false) {
         let isInline = (UserDefaults.standard.string(forKey: GhostTextManager.displayModeKey) ?? "inline") == "inline"
         updateBadgeText(isInline: isInline)
         label.stringValue = text
 
-        // Styling based on display mode
+        // Visual effect HUD ensures crisp, high-contrast readability across all web pages and light/dark modes
+        visualEffect.isHidden = false
+        visualEffect.material = .hudWindow
+        visualEffect.state = .active
+        hasShadow = true
+        label.textColor = NSColor.labelColor.withAlphaComponent(0.9)
+
         if isInline {
-            hasShadow = false
-            visualEffect.isHidden = true
-            label.textColor = NSColor.placeholderTextColor
             badge.isHidden = true
-            stack.edgeInsets = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+            stack.edgeInsets = NSEdgeInsets(top: 2, left: 6, bottom: 2, right: 6)
         } else {
-            hasShadow = true
-            visualEffect.isHidden = false
-            label.textColor = NSColor.labelColor.withAlphaComponent(0.85)
             badge.isHidden = false
             stack.edgeInsets = NSEdgeInsets(top: 3, left: 8, bottom: 3, right: 8)
         }
@@ -515,7 +543,7 @@ final class GhostTextOverlayWindow: NSPanel {
         let size = label.intrinsicContentSize
         let totalWidth: CGFloat
         if isInline {
-            totalWidth = size.width + 4
+            totalWidth = size.width + 16
         } else {
             totalWidth = min(max(size.width + 64, 110), 650)
         }
@@ -532,7 +560,13 @@ final class GhostTextOverlayWindow: NSPanel {
         // Coordinate conversion: AX coords have (0,0) at top-left of primary screen.
         // AppKit coords have (0,0) at bottom-left of primary screen.
         let caretBottomY = primaryScreenHeight - (caret.origin.y + caret.height)
-        let y = caretBottomY + (caret.height - totalHeight) / 2
+        let y: CGFloat
+        if isMidLine {
+            // Position 4px below caret line to never overlap the suffix text on the same line
+            y = caretBottomY - totalHeight - 4
+        } else {
+            y = caretBottomY + (caret.height - totalHeight) / 2
+        }
         let x = isInline ? caret.origin.x + caret.width : caret.origin.x + caret.width + 4
         screenOrigin = CGPoint(x: x, y: y)
 
@@ -558,7 +592,7 @@ final class GhostTextOverlayWindow: NSPanel {
                 badge.stringValue = "Tab ⇥ | ⌥→ từ"
             } else {
                 let parts = shortcut.displayParts.joined()
-                badge.stringValue = parts.isEmpty ? "⇥" : "\(parts) ⇥"
+                badge.stringValue = parts.isEmpty ? "⇥" : "\(parts) ⇥ | ⌥→ từ"
             }
         } else {
             badge.stringValue = "Tab ⇥ | ⌥→ từ"
