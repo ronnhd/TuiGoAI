@@ -567,7 +567,8 @@ final class GhostTextOverlayWindow: NSPanel {
         } else {
             y = caretBottomY + (caret.height - totalHeight) / 2
         }
-        let x = isInline ? caret.origin.x + caret.width : caret.origin.x + caret.width + 4
+        let horizontalGap: CGFloat = isInline ? 10 : 12
+        let x = caret.origin.x + caret.width + horizontalGap
         screenOrigin = CGPoint(x: x, y: y)
 
         // Clamp to screen bounds so overlay doesn't overflow screen right edge
