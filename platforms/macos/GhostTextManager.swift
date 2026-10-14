@@ -248,10 +248,16 @@ public final class GhostTextManager: ObservableObject {
         }
     }
 
-    /// Bộ lọc Smart Suppression: ngăn gợi ý không cần thiết khi gõ URL, code, số hoặc sau dấu chấm
+    /// Bộ lọc Smart Suppression: ngăn gợi ý không cần thiết khi gõ URL, code, số, sau dấu chấm hoặc đang gõ dở phụ âm đầu
     public nonisolated static func shouldSuppress(prefixText: String) -> Bool {
-        let trimmed = prefixText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = prefixText.precomposedStringWithCanonicalMapping
+        let trimmed = normalized.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.count < 3 { return true }
+
+        // 0. Đang gõ dở phụ âm đầu tiếng Việt chưa có nguyên âm (vd: "chương tr", "triển kh")
+        if CaretBoundary.hasUnfinishedTrailingSyllable(normalized) {
+            return true
+        }
 
         // 1. Dấu câu kết thúc đoạn văn và chưa có chữ mới
         if let lastChar = trimmed.last, [".", "!", "?", ";", ":"].contains(lastChar) {
@@ -362,13 +368,13 @@ public final class GhostTextManager: ObservableObject {
             fullText = text
         }
 
-        // Extract context using UTF-16 offsets returned by Accessibility.
+        // Extract context using UTF-16 offsets returned by Accessibility, then normalize to NFC.
         let utf16 = fullText.utf16
         guard selectedRange.location <= utf16.count else { return nil }
         let caretIndex = selectedRange.location
         let endIndex = String.Index(utf16Offset: caretIndex, in: fullText)
-        let beforeCaret = String(fullText[..<endIndex])
-        let afterCaret = String(fullText[endIndex...])
+        let beforeCaret = String(fullText[..<endIndex]).precomposedStringWithCanonicalMapping
+        let afterCaret = String(fullText[endIndex...]).precomposedStringWithCanonicalMapping
         let prefixText = String(beforeCaret.suffix(2000))
         let suffixText = String(afterCaret.prefix(500))
 

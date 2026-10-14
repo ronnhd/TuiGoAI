@@ -8,6 +8,7 @@ final class AIServiceTests: XCTestCase {
         XCTAssertEqual(config.providerType, .localOllama)
         XCTAssertEqual(config.baseURL, "http://localhost:11434/v1")
         XCTAssertEqual(config.model, "qwen2.5:3b")
+        XCTAssertEqual(config.temperature, 0.1)
     }
 
     func testConfigPersistence() {
@@ -50,6 +51,84 @@ final class AIServiceTests: XCTestCase {
             suffix: ""
         )
         XCTAssertEqual(cleaned, "proposal mới kickoff hôm nay")
+    }
+
+    func testCleanCompletionPreservesVietnameseReduplication() {
+        // Từ láy toàn phần bên trong phần gợi ý ("luôn luôn", "đều đều")
+        let cleaned1 = AIService.cleanCompletion(
+            "luôn luôn đồng hành cùng khách hàng",
+            prefix: "Chúng tôi ",
+            suffix: ""
+        )
+        XCTAssertEqual(cleaned1, "luôn luôn đồng hành cùng khách hàng")
+
+        // Từ láy toàn phần nối qua ranh giới con trỏ ("cứ từ " + "từ thôi nhé")
+        let cleaned2 = AIService.cleanCompletion(
+            "từ thôi nhé anh ơi",
+            prefix: "Anh cứ từ ",
+            suffix: ""
+        )
+        XCTAssertEqual(cleaned2, "từ thôi nhé anh ơi")
+
+        // Nhưng nếu lặp quá 2 lần ("luôn luôn luôn") thì vẫn cắt về tối đa 2 lần
+        let cleaned3 = AIService.cleanCompletion(
+            "luôn luôn luôn sẵn sàng hỗ trợ",
+            prefix: "Chúng tôi ",
+            suffix: ""
+        )
+        XCTAssertEqual(cleaned3, "luôn luôn sẵn sàng hỗ trợ")
+    }
+
+    func testCleanCompletionCollapsesCompoundNGramLoops() {
+        // Từ ghép 2 âm tiết bị lặp ("kế hoạch kế hoạch")
+        let cleaned2Gram = AIService.cleanCompletion(
+            "kế hoạch kế hoạch triển khai tuần tới",
+            prefix: "Em gửi anh bản ",
+            suffix: ""
+        )
+        XCTAssertEqual(cleaned2Gram, "kế hoạch triển khai tuần tới")
+
+        // Cụm 3 âm tiết bị lặp ("cho dự án cho dự án")
+        let cleaned3Gram = AIService.cleanCompletion(
+            "cho dự án cho dự án mới của team",
+            prefix: "Mình chuẩn bị tài liệu ",
+            suffix: ""
+        )
+        XCTAssertEqual(cleaned3Gram, "cho dự án mới của team")
+    }
+
+    func testCleanCompletionRejectsConversationalReplyHallucination() {
+        let reply = AIService.cleanCompletion(
+            "Dạ vâng, anh cứ hỏi đi ạ",
+            prefix: "Anh ơi cho em hỏi ",
+            suffix: ""
+        )
+        XCTAssertEqual(reply, "")
+    }
+
+    func testCleanCompletionNormalizesDecomposedUnicodeNFD() {
+        // Chuỗi NFD có dấu rời vẫn phải khớp và chuẩn hóa về NFC
+        let decomposedPrefix = "Mình gửi bạn bản đề xuất ".decomposedStringWithCanonicalMapping
+        let decomposedRaw = "Mình gửi bạn bản đề xuất kế hoạch mới".decomposedStringWithCanonicalMapping
+        let cleaned = AIService.cleanCompletion(decomposedRaw, prefix: decomposedPrefix, suffix: "")
+        XCTAssertEqual(cleaned, "kế hoạch mới")
+    }
+
+    func testUnfinishedVietnameseOnsetCompletion() {
+        // Phụ âm đầu treo được nhận diện để chặn gợi ý sớm khi đang gõ
+        XCTAssertTrue(CaretBoundary.hasUnfinishedTrailingSyllable("Em gửi bản chương tr"))
+        XCTAssertTrue(CaretBoundary.hasUnfinishedTrailingSyllable("Đang nghiên c"))
+        XCTAssertFalse(CaretBoundary.hasUnfinishedTrailingSyllable("Em gửi bản chương trình"))
+        XCTAssertFalse(CaretBoundary.hasUnfinishedTrailingSyllable("Em gửi bản chương tr "))
+
+        // Nếu model trả về cả từ hoàn chỉnh ("trình đào tạo mới") khi con trỏ ở "chương tr",
+        // stripOverlappingPrefix + CaretBoundary.reconcile nối mượt không bị chèn dấu cách thừa
+        let cleaned = AIService.cleanCompletion(
+            "trình đào tạo mới cho nhân sự",
+            prefix: "Em gửi bản chương tr",
+            suffix: ""
+        )
+        XCTAssertEqual(cleaned, "ình đào tạo mới cho nhân sự")
     }
 
     func testCleanCompletionWithoutTrailingSpaceAddsLeadingSpace() {
@@ -118,6 +197,7 @@ final class AIServiceTests: XCTestCase {
         XCTAssertTrue(GhostTextManager.shouldSuppress(prefixText: "https://google.com/"))
         XCTAssertTrue(GhostTextManager.shouldSuppress(prefixText: "0912345678"))
         XCTAssertTrue(GhostTextManager.shouldSuppress(prefixText: "func myMethod()"))
+        XCTAssertTrue(GhostTextManager.shouldSuppress(prefixText: "Em gửi bản chương tr"))
         XCTAssertFalse(GhostTextManager.shouldSuppress(prefixText: "mai mình "))
         XCTAssertFalse(GhostTextManager.shouldSuppress(prefixText: "chiều nay họp "))
     }

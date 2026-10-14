@@ -19,6 +19,45 @@ import Foundation
 /// If the real text already ended in whitespace, we drop the redundant leading space so
 /// the editor never receives a double space.
 public enum CaretBoundary {
+    /// Tập nguyên âm tiếng Việt (NFC dựng sẵn) dùng để nhận diện phần vần nối tiếp âm tiết đang gõ dở.
+    private static let vietnameseVowels: Set<Character> = [
+        "a", "à", "á", "ả", "ã", "ạ",
+        "ă", "ằ", "ắ", "ẳ", "ẵ", "ặ",
+        "â", "ầ", "ấ", "ẩ", "ẫ", "ậ",
+        "e", "è", "é", "ẻ", "ẽ", "ẹ",
+        "ê", "ề", "ế", "ể", "ễ", "ệ",
+        "i", "ì", "í", "ỉ", "ĩ", "ị",
+        "o", "ò", "ó", "ỏ", "õ", "ọ",
+        "ô", "ồ", "ố", "ổ", "ỗ", "ộ",
+        "ơ", "ờ", "ớ", "ở", "ỡ", "ợ",
+        "u", "ù", "ú", "ủ", "ũ", "ụ",
+        "ư", "ừ", "ứ", "ử", "ữ", "ự",
+        "y", "ỳ", "ý", "ỷ", "ỹ", "ỵ",
+    ]
+
+    /// Các phụ âm đầu tiếng Việt khi đứng cuối chuỗi chưa có nguyên âm theo sau (âm tiết đang gõ dở).
+    private static let unfinishedOnsetClusters: Set<String> = [
+        "b", "c", "ch", "d", "đ", "g", "gh", "gi", "h", "k", "kh",
+        "l", "m", "n", "ng", "ngh", "nh", "p", "ph", "qu", "r",
+        "s", "t", "th", "tr", "v", "x",
+    ]
+
+    /// Kiểm tra xem con trỏ có đang dừng ngay sau một phụ âm đầu tiếng Việt chưa có phần vần hay không
+    /// (ví dụ: `"chương tr"`, `"triển kh"`, `"báo c"`).
+    public static func hasUnfinishedTrailingSyllable(_ beforeCursor: String) -> Bool {
+        let nfc = beforeCursor.precomposedStringWithCanonicalMapping
+        guard let last = nfc.last, !last.isWhitespace else { return false }
+        guard let lastToken = nfc.split(whereSeparator: \.isWhitespace).last else { return false }
+        let lowerToken = String(lastToken).lowercased()
+        return unfinishedOnsetClusters.contains(lowerToken)
+    }
+
+    /// Kiểm tra một ký tự có phải nguyên âm tiếng Việt hay không.
+    public static func isVietnameseVowel(_ char: Character) -> Bool {
+        guard let lower = char.lowercased().first else { return false }
+        return vietnameseVowels.contains(lower)
+    }
+
     /// Drops trailing whitespace (spaces, tabs, newlines) so the prompt ends cleanly at a word boundary.
     public static func trimmingTrailingWhitespace(_ text: String) -> String {
         var view = Substring(text)
@@ -31,7 +70,8 @@ public enum CaretBoundary {
     /// Returns `candidate` adjusted so it inserts cleanly at the caret given `beforeCursor`
     /// (the original, untrimmed text immediately left of the cursor).
     public static func reconcile(_ candidate: String, beforeCursor: String) -> String {
-        var result = Substring(candidate)
+        var result = Substring(candidate.precomposedStringWithCanonicalMapping)
+        let nfcBefore = beforeCursor.precomposedStringWithCanonicalMapping
 
         // Strip leading newlines/carriage returns
         while let first = result.first, first == "\n" || first == "\r" {
@@ -40,16 +80,21 @@ public enum CaretBoundary {
 
         guard !result.isEmpty else { return "" }
 
-        if let last = beforeCursor.last, last.isWhitespace {
+        if let last = nfcBefore.last, last.isWhitespace {
             // Already has whitespace: drop any leading whitespace so we don't double space
             while let first = result.first, first.isWhitespace {
                 result = result.dropFirst()
             }
-        } else if let last = beforeCursor.last, !last.isWhitespace {
-            // Caret is touching a word without trailing space (e.g. "xuất" in "bản đề xuất"):
-            // Ensure there is exactly ONE leading space so the continuation doesn't merge with the word!
+        } else if let last = nfcBefore.last, !last.isWhitespace {
+            let startedWithSpace = result.first?.isWhitespace == true
             while let first = result.first, first.isWhitespace {
                 result = result.dropFirst()
+            }
+            guard let firstChar = result.first else { return "" }
+            // Nếu con trỏ đang dừng ở một phụ âm đầu chưa hoàn chỉnh (vd: "chương tr") và gợi ý
+            // bắt đầu trực tiếp bằng phần vần nguyên âm (vd: "ình mới"), nối liền không chèn dấu cách.
+            if !startedWithSpace, hasUnfinishedTrailingSyllable(nfcBefore), isVietnameseVowel(firstChar) {
+                return String(result)
             }
             return " " + String(result)
         }
@@ -139,7 +184,7 @@ public enum SuffixOverlapGuard {
             minimumOverlap: minimumOverlap,
             minimumContainedOverlap: minimumContainedOverlap
         ) else { return nil }
-        return originalPrefixCharacterCount(of: completion, keepingFirstAlphanumerics: normalizedStart)
+        return originalPrefixCharacterCount(of: completion.precomposedStringWithCanonicalMapping, keepingFirstAlphanumerics: normalizedStart)
     }
 
     static func duplicationStart(
@@ -175,7 +220,7 @@ public enum SuffixOverlapGuard {
     }
 
     private static func normalizedAlphanumerics(_ text: String) -> String {
-        text.lowercased().filter { $0.isLetter || $0.isNumber }
+        text.precomposedStringWithCanonicalMapping.lowercased().filter { $0.isLetter || $0.isNumber }
     }
 
     private static func longestPrefixOverlap(_ a: String, in b: String) -> Int {

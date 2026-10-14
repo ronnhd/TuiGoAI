@@ -71,7 +71,7 @@ public struct AIConfig: Codable, Sendable {
         baseURL: AIProviderType.localOllama.defaultBaseURL,
         apiKey: "",
         model: "qwen2.5:3b",
-        temperature: 0.3,
+        temperature: 0.1,
         timeoutInterval: 15.0
     )
 }
@@ -137,6 +137,20 @@ public final class AIService: @unchecked Sendable {
 
     private let configKey = "tuigoai.ai.config"
     private let urlSession: URLSession
+
+    /// Danh sách các từ đơn tiếng Việt có thể láy toàn phần hợp lệ (tối đa 2 lần liên tiếp).
+    private static let vietnameseReduplicableWords: Set<String> = [
+        "luôn", "từ", "đều", "nhanh", "chầm", "chậm", "dần", "sớm", "chiều",
+        "ngày", "đêm", "tháng", "năm", "đời", "người", "nhà", "hơi", "rất",
+        "nhỏ", "to", "cao", "thấp", "xa", "gần", "lâu", "mãi", "vừa", "cùng",
+        "từng", "mỗi", "ai", "gì", "đâu", "nào", "sao", "thế", "vậy", "ừ", "vâng",
+    ]
+
+    /// Các cụm mở đầu câu trả lời hội thoại lệch vai (khi model trả lời câu hỏi thay vì viết tiếp câu đang gõ).
+    private static let conversationalReplyPrefixes: [String] = [
+        "dạ vâng", "vâng ạ", "chào bạn", "xin chào", "tôi có thể giúp",
+        "bạn cần hỗ trợ", "mình có thể giúp", "dưới đây là", "câu trả lời là",
+    ]
 
     private init() {
         let configuration = URLSessionConfiguration.default
@@ -261,7 +275,7 @@ public final class AIService: @unchecked Sendable {
             else {
                 throw AIError.noResponse
             }
-            return content
+            return content.precomposedStringWithCanonicalMapping
         } catch {
             let rawString = String(data: data, encoding: .utf8) ?? ""
             throw AIError.decodingError("Lỗi đọc phản hồi JSON: \(error.localizedDescription). Phản hồi nhận được: \(rawString.prefix(100))")
@@ -277,7 +291,7 @@ public final class AIService: @unchecked Sendable {
 
         Văn bản gốc:
         \"\"\"
-        \(text)
+        \(text.precomposedStringWithCanonicalMapping)
         \"\"\"
         """
         return try await complete(systemPrompt: systemPrompt, userPrompt: userPrompt)
@@ -302,7 +316,7 @@ public final class AIService: @unchecked Sendable {
 
         Văn bản gốc:
         \"\"\"
-        \(text)
+        \(text.precomposedStringWithCanonicalMapping)
         \"\"\"
         """
         return try await complete(systemPrompt: systemPrompt, userPrompt: userPrompt)
@@ -319,7 +333,7 @@ public final class AIService: @unchecked Sendable {
 
         Văn bản:
         \"\"\"
-        \(text)
+        \(text.precomposedStringWithCanonicalMapping)
         \"\"\"
         """
         let result = try await complete(systemPrompt: systemPrompt, userPrompt: userPrompt)
@@ -340,7 +354,7 @@ public final class AIService: @unchecked Sendable {
 
         Mô tả:
         \"\"\"
-        \(description)
+        \(description.precomposedStringWithCanonicalMapping)
         \"\"\"
         """
         let raw = try await complete(systemPrompt: systemPrompt, userPrompt: userPrompt)
@@ -365,10 +379,13 @@ public final class AIService: @unchecked Sendable {
         let lengthRaw = UserDefaults.standard.string(forKey: GhostTextManager.completionLengthKey) ?? "medium"
         let lengthConfig = GhostTextCompletionLength(rawValue: lengthRaw) ?? .medium
 
-        let trimmedPrefix = CaretBoundary.trimmingTrailingWhitespace(prefixText)
+        let nfcPrefix = prefixText.precomposedStringWithCanonicalMapping
+        let nfcSuffix = suffixText.precomposedStringWithCanonicalMapping
+
+        let trimmedPrefix = CaretBoundary.trimmingTrailingWhitespace(nfcPrefix)
         guard !trimmedPrefix.isEmpty else { throw AIError.noResponse }
         let windowedPrefix = String(trimmedPrefix.suffix(2000))
-        let windowedSuffix = String(suffixText.prefix(500)).trimmingCharacters(in: .newlines)
+        let windowedSuffix = String(nfcSuffix.prefix(500)).trimmingCharacters(in: .newlines)
 
         var recentMessages: [String] = []
         if let bundle = bundleId {
@@ -390,9 +407,9 @@ public final class AIService: @unchecked Sendable {
             raw: true,
             stream: false,
             options: OllamaGenerateRequest.Options(
-                temperature: 0.2,
-                topP: 0.9,
-                topK: nil,
+                temperature: 0.1,
+                topP: 0.8,
+                topK: 20,
                 repeatPenalty: 1.15,
                 numPredict: lengthConfig.numPredict,
                 stop: ["\n", "\r", "<|im_end|>", "<|endoftext|>", "```"]
@@ -419,7 +436,7 @@ public final class AIService: @unchecked Sendable {
         }
         let result = try JSONDecoder().decode(OllamaGenerateResponse.self, from: data)
         guard let raw = result.response, !raw.isEmpty else { throw AIError.noResponse }
-        let cleaned = Self.cleanCompletion(raw, prefix: prefixText, suffix: suffixText, maxWords: lengthConfig.maxWords)
+        let cleaned = Self.cleanCompletion(raw, prefix: nfcPrefix, suffix: nfcSuffix, maxWords: lengthConfig.maxWords)
         guard !cleaned.isEmpty else { throw AIError.noResponse }
         return cleaned
     }
@@ -432,7 +449,7 @@ public final class AIService: @unchecked Sendable {
             }
         }
         guard let raw = NSPasteboard.general.string(forType: .string) else { return nil }
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = raw.precomposedStringWithCanonicalMapping.trimmingCharacters(in: .whitespacesAndNewlines)
         // Giới hạn chiều dài: từ 4 đến 300 ký tự
         guard trimmed.count >= 4, trimmed.count <= 300 else { return nil }
         // Giới hạn dòng: tối đa 3 dòng (tránh paste cả văn bản dài)
@@ -451,13 +468,14 @@ public final class AIService: @unchecked Sendable {
         appName: String? = nil,
         clipboardText: String? = nil
     ) -> String {
-        let trimmedPrefix = CaretBoundary.trimmingTrailingWhitespace(prefix)
+        let nfcPrefix = prefix.precomposedStringWithCanonicalMapping
+        let trimmedPrefix = CaretBoundary.trimmingTrailingWhitespace(nfcPrefix)
         guard !trimmedPrefix.isEmpty else { return "" }
-        let trimmedSuffix = suffix.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedSuffix = suffix.precomposedStringWithCanonicalMapping.trimmingCharacters(in: .whitespacesAndNewlines)
 
         var userLines: [String] = []
         let history = recentMessages
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .map { $0.precomposedStringWithCanonicalMapping.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
             .suffix(3)
         if !history.isEmpty {
@@ -466,7 +484,8 @@ public final class AIService: @unchecked Sendable {
                 userLines.append("- \(msg)")
             }
         }
-        if let clip = clipboardText?.trimmingCharacters(in: .whitespacesAndNewlines), !clip.isEmpty, clip != trimmedPrefix {
+        if let clip = clipboardText?.precomposedStringWithCanonicalMapping.trimmingCharacters(in: .whitespacesAndNewlines),
+           !clip.isEmpty, clip != trimmedPrefix {
             userLines.append("Nội dung vừa sao chép (tham khảo nếu liên quan):")
             userLines.append(clip)
         }
@@ -481,7 +500,7 @@ public final class AIService: @unchecked Sendable {
 
         return """
         <|im_start|>system
-        Bạn là bộ gõ tiếng Việt. Bạn chỉ viết tiếp câu bằng tiếng Việt tự nhiên (chữ Quốc ngữ). Không dùng tiếng nước ngoài, không lặp lại từ đã có. Giữ đúng phong cách và xưng hô của người dùng.<|im_end|>
+        Bạn là bộ gõ tiếng Việt. Bạn chỉ viết tiếp phần còn thiếu của câu người dùng đang gõ bằng tiếng Việt tự nhiên (chữ Quốc ngữ). Tuyệt đối không trả lời câu hỏi, không giải thích, không dùng tiếng nước ngoài, không lặp lại từ đã có. Giữ đúng phong cách và xưng hô của người dùng.<|im_end|>
         <|im_start|>user
         \(userContent)<|im_end|>
         <|im_start|>assistant
@@ -490,8 +509,9 @@ public final class AIService: @unchecked Sendable {
     }
 
     static func stripOverlappingPrefix(_ text: String, prefix: String) -> String {
-        var result = text.trimmingCharacters(in: .newlines)
-        let trimmedPrefix = prefix.trimmingCharacters(in: .whitespacesAndNewlines)
+        let result = text.precomposedStringWithCanonicalMapping.trimmingCharacters(in: .newlines)
+        let nfcPrefix = prefix.precomposedStringWithCanonicalMapping
+        let trimmedPrefix = nfcPrefix.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedPrefix.isEmpty, !result.isEmpty else { return result }
 
         if result.hasPrefix(trimmedPrefix) {
@@ -518,36 +538,99 @@ public final class AIService: @unchecked Sendable {
                     ) == .orderedSame
             }
             if matched {
+                if count == 1, let singleWord = head.first {
+                    let normWord = singleWord.trimmingCharacters(in: .punctuationCharacters).lowercased()
+                    let alreadyDoubledInPrefix: Bool = {
+                        guard prefixWords.count >= 2 else { return false }
+                        let secondLast = prefixWords[prefixWords.count - 2]
+                            .trimmingCharacters(in: .punctuationCharacters).lowercased()
+                        return secondLast == normWord
+                    }()
+                    if vietnameseReduplicableWords.contains(normWord) && !alreadyDoubledInPrefix && resultWords.count >= 2 {
+                        break
+                    }
+                }
                 return resultWords.dropFirst(count).joined(separator: " ")
             }
         }
+
+        // Nếu con trỏ đang dừng ở phụ âm đầu tiếng Việt chưa hoàn chỉnh (vd: "chương tr")
+        // và từ đầu tiên của model lặp lại phụ âm đầu đó để hoàn thành âm tiết (vd: "trình mới"),
+        // cắt bỏ phần phụ âm đầu trùng lặp để giữ lại phần vần ("ình mới").
+        if CaretBoundary.hasUnfinishedTrailingSyllable(nfcPrefix),
+           let lastOnset = prefixWords.last?.lowercased(),
+           let firstWord = resultWords.first {
+            let lowerFirst = firstWord.lowercased()
+            if lowerFirst.hasPrefix(lastOnset), lowerFirst.count > lastOnset.count {
+                let remainderStart = firstWord.index(firstWord.startIndex, offsetBy: lastOnset.count)
+                let remainder = String(firstWord[remainderStart...])
+                if let firstRemainderChar = remainder.first, CaretBoundary.isVietnameseVowel(firstRemainderChar) {
+                    let tailWords = resultWords.dropFirst()
+                    if tailWords.isEmpty {
+                        return remainder
+                    }
+                    return ([remainder] + tailWords).joined(separator: " ")
+                }
+            }
+        }
+
         return result
     }
 
+    /// Khử các cụm từ ghép tiếng Việt (2–3 âm tiết) bị lặp liên tiếp do LLM nhỏ bị loop.
+    static func collapseRepeatedNGrams(_ words: [String]) -> [String] {
+        guard words.count >= 4 else { return words }
+        var current = words
+        for n in [3, 2] {
+            var output: [String] = []
+            var i = 0
+            while i < current.count {
+                if output.count >= n && i + n <= current.count {
+                    let prevNGram = output.suffix(n).map {
+                        $0.trimmingCharacters(in: .punctuationCharacters).lowercased()
+                    }
+                    let nextNGram = current[i ..< (i + n)].map {
+                        $0.trimmingCharacters(in: .punctuationCharacters).lowercased()
+                    }
+                    if prevNGram == nextNGram {
+                        i += n
+                        continue
+                    }
+                }
+                output.append(current[i])
+                i += 1
+            }
+            current = output
+        }
+        return current
+    }
+
     static func cleanCompletion(_ raw: String, prefix: String, suffix: String, maxWords: Int = 8) -> String {
-        var text = raw.trimmingCharacters(in: .newlines)
+        let nfcPrefix = prefix.precomposedStringWithCanonicalMapping
+        let nfcSuffix = suffix.precomposedStringWithCanonicalMapping
+        var text = raw.precomposedStringWithCanonicalMapping.trimmingCharacters(in: .newlines)
         text = text.replacingOccurrences(of: "^```[^\\n]*\\n|\\n```$", with: "", options: .regularExpression)
             .trimmingCharacters(in: CharacterSet(charactersIn: "\\\"'`"))
         guard !text.isEmpty else { return "" }
 
         // Strip foreign script hallucinations (CJK, Hangul, Katakana, Hiragana)
         let hasForbiddenScript = text.unicodeScalars.contains { scalar in
-            (0x4E00...0x9FFF).contains(scalar.value) || // CJK Unified Ideographs
-            (0x3400...0x4DBF).contains(scalar.value) || // CJK Extension A
-            (0xAC00...0xD7AF).contains(scalar.value) || // Hangul Syllables
-            (0x3040...0x30FF).contains(scalar.value)    // Hiragana / Katakana
+            (0x4E00 ... 0x9FFF).contains(scalar.value) || // CJK Unified Ideographs
+            (0x3400 ... 0x4DBF).contains(scalar.value) || // CJK Extension A
+            (0xAC00 ... 0xD7AF).contains(scalar.value) || // Hangul Syllables
+            (0x3040 ... 0x30FF).contains(scalar.value)    // Hiragana / Katakana
         }
         if hasForbiddenScript {
             return ""
         }
 
-        text = stripOverlappingPrefix(text, prefix: prefix)
+        text = stripOverlappingPrefix(text, prefix: nfcPrefix)
         guard !text.isEmpty else { return "" }
 
         // Suffix overlap guard
-        if !suffix.isEmpty {
-            if SuffixOverlapGuard.duplicatesSuffix(completion: text.trimmingCharacters(in: .whitespaces), beforeCursor: prefix, afterCursor: suffix) {
-                if let nonDupLen = SuffixOverlapGuard.nonDuplicatingPrefixLength(completion: text.trimmingCharacters(in: .whitespaces), beforeCursor: prefix, afterCursor: suffix), nonDupLen > 0 {
+        if !nfcSuffix.isEmpty {
+            if SuffixOverlapGuard.duplicatesSuffix(completion: text.trimmingCharacters(in: .whitespaces), beforeCursor: nfcPrefix, afterCursor: nfcSuffix) {
+                if let nonDupLen = SuffixOverlapGuard.nonDuplicatingPrefixLength(completion: text.trimmingCharacters(in: .whitespaces), beforeCursor: nfcPrefix, afterCursor: nfcSuffix), nonDupLen > 0 {
                     text = String(text.prefix(nonDupLen))
                 } else {
                     return ""
@@ -560,21 +643,64 @@ public final class AIService: @unchecked Sendable {
         var words = firstLine.split(whereSeparator: \.isWhitespace).map(String.init)
         guard !words.isEmpty else { return "" }
 
-        // Models sometimes repeat the word immediately before the cursor or loop one token.
-        if let lastPrefixWord = prefix.split(whereSeparator: \.isWhitespace).last,
-           words.first?.trimmingCharacters(in: .punctuationCharacters).localizedCaseInsensitiveCompare(String(lastPrefixWord).trimmingCharacters(in: .punctuationCharacters)) == .orderedSame {
-            words.removeFirst()
+        // Chặn trường hợp model đóng vai người trả lời câu hỏi thay vì viết tiếp câu của người dùng
+        let prefixWords = nfcPrefix.split(whereSeparator: \.isWhitespace).map(String.init)
+        if prefixWords.count >= 2 {
+            let candidateLower = words.prefix(4).joined(separator: " ").lowercased()
+            if conversationalReplyPrefixes.contains(where: { candidateLower.hasPrefix($0) }) {
+                return ""
+            }
         }
+
+        // Xử lý từ đầu gợi ý trùng với từ cuối của prefix:
+        // Giữ lại nếu là từ láy toàn phần tiếng Việt hợp lệ (vd: prefix "cứ từ " + "từ thôi nhé" -> "cứ từ từ thôi nhé"),
+        // nhưng loại bỏ nếu không phải từ láy hoặc trong prefix đã lặp đôi sẵn.
+        if let lastPrefixWord = prefixWords.last,
+           let firstWord = words.first {
+            let normLast = lastPrefixWord.trimmingCharacters(in: .punctuationCharacters).lowercased()
+            let normFirst = firstWord.trimmingCharacters(in: .punctuationCharacters).lowercased()
+            if normLast == normFirst {
+                let alreadyDoubledInPrefix: Bool = {
+                    guard prefixWords.count >= 2 else { return false }
+                    let secondLast = prefixWords[prefixWords.count - 2]
+                        .trimmingCharacters(in: .punctuationCharacters).lowercased()
+                    return secondLast == normLast
+                }()
+                let canReduplicate = vietnameseReduplicableWords.contains(normFirst) && !alreadyDoubledInPrefix && words.count >= 2
+                if !canReduplicate {
+                    words.removeFirst()
+                }
+            }
+        }
+        guard !words.isEmpty else { return "" }
+
+        // Khử lặp từ đơn nhưng bảo toàn từ láy toàn phần tiếng Việt (cho phép lặp tối đa 2 lần)
         var deduplicated: [String] = []
         for word in words {
-            if deduplicated.last?.trimmingCharacters(in: .punctuationCharacters).localizedCaseInsensitiveCompare(word.trimmingCharacters(in: .punctuationCharacters)) == .orderedSame {
-                continue
+            let normWord = word.trimmingCharacters(in: .punctuationCharacters).lowercased()
+            if let last = deduplicated.last {
+                let normLast = last.trimmingCharacters(in: .punctuationCharacters).lowercased()
+                if normLast == normWord {
+                    let isReduplicable = vietnameseReduplicableWords.contains(normWord)
+                    let alreadyRepeatedTwice: Bool = {
+                        guard deduplicated.count >= 2 else { return false }
+                        let secondLast = deduplicated[deduplicated.count - 2]
+                            .trimmingCharacters(in: .punctuationCharacters).lowercased()
+                        return secondLast == normWord
+                    }()
+                    if !isReduplicable || alreadyRepeatedTwice {
+                        continue
+                    }
+                }
             }
             deduplicated.append(word)
         }
-        let joined = deduplicated.prefix(maxWords).joined(separator: " ")
+
+        // Khử lặp cụm 2–3 âm tiết liên tiếp (vd: "kế hoạch kế hoạch", "cho dự án cho dự án")
+        let nGramCleaned = collapseRepeatedNGrams(deduplicated)
+        let joined = nGramCleaned.prefix(maxWords).joined(separator: " ")
         guard !joined.isEmpty else { return "" }
-        return CaretBoundary.reconcile(joined, beforeCursor: prefix)
+        return CaretBoundary.reconcile(joined, beforeCursor: nfcPrefix)
     }
 
     private struct OllamaGenerateRequest: Encodable {

@@ -1418,6 +1418,9 @@ private func triggerRestoreShortcut(flags: CGEventFlags, proxy: CGEventTapProxy)
 
 /// Inject accepted Ghost Text using the same fallback chain as ordinary IME text.
 func injectGhostText(_ text: String, proxy: CGEventTapProxy) {
+    // Clear the Rust IME composition buffer so subsequent keystrokes (like tone marks or backspace)
+    // do not mutate the word typed before the injected ghost text.
+    RustBridge.clearBuffer()
     let (method, delays) = detectMethod()
     TextInjector.shared.injectSync(bs: 0, text: text, method: method, delays: delays, proxy: proxy)
 }
@@ -1572,8 +1575,17 @@ private func keyboardCallback(
     }
 
     GhostTextManager.invalidateSuggestionFromHook()
-    Task { @MainActor in
-        GhostTextManager.shared.handleKeystroke(keyCode: keyCode, isKeyDown: true)
+    // Trigger GhostTextManager AFTER RustBridge.processKey and sendReplacement finish injecting
+    // Vietnamese characters so Accessibility API always reads the post-replacement text.
+    let isNonTypingKey = keyCode == 0x24 || keyCode == 0x4C || keyCode == 0x35 || flags.contains(.maskCommand) || flags.contains(.maskControl)
+    defer {
+        Task { @MainActor in
+            if isNonTypingKey {
+                GhostTextManager.shared.dismiss()
+            } else {
+                GhostTextManager.shared.handleKeystroke(keyCode: keyCode, isKeyDown: true)
+            }
+        }
     }
 
     // Log all keystrokes (only when debug enabled - no overhead otherwise)

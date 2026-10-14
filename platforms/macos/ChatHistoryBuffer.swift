@@ -18,7 +18,7 @@ public final class ChatHistoryBuffer: @unchecked Sendable {
 
     /// Ghi nhận 1 câu vừa được gửi đi (bấm Return/Enter không kèm phím Shift/Option)
     public func record(text: String, bundleId: String) {
-        let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleaned = text.precomposedStringWithCanonicalMapping.trimmingCharacters(in: .whitespacesAndNewlines)
         guard cleaned.count >= 2, cleaned.count <= 1000 else { return }
 
         lock.lock()

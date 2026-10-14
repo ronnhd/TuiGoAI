@@ -3,6 +3,10 @@
     "gkg": {
       "type": "sse",
       "url": "http://localhost:27495/mcp/sse"
+    },
+    "superthread": {
+      "type": "http",
+      "url": "https://mcp.superthread.com/mcp"
     }
   }
 }
