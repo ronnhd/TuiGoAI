@@ -4,24 +4,32 @@
 
 ### Cách 1: Tải bản phát hành (Khuyến nghị)
 
-1. **Tải về:** [TuiGoAI.dmg](https://github.com/ronnhd/TuiGoAI/releases)
+1. **Tải về:** [TuiGoAI.dmg](https://github.com/ronnhd/TuiGoAI/releases) (Bản Alpha Preview)
 2. **Cài đặt:** Mở file `.dmg` → Kéo vào **Applications**
-3. **Cho phép chạy:** (Lưu ý gỡ kiểm dịch macOS sau khi kéo app)
+3. **Vượt qua Gatekeeper macOS:**
    ```bash
    xattr -cr /Applications/TuiGoAI.app
    ```
-4. **Cấp quyền:** Mở app → System Settings → Privacy & Security → Accessibility → Bật **TuiGoAI**
+   *(Hoặc vào `System Settings > Privacy & Security` → Bấm **Open Anyway**)*
+4. **Cấp quyền Trợ năng:** Mở app → System Settings → Privacy & Security → Accessibility → Bật **TuiGoAI**
+5. **Cài đặt Local AI (Ollama):**
+   ```bash
+   ollama run qwen2.5:3b
+   ```
 
 ---
 
-## Sử dụng
+## Sử dụng & Phím tắt
 
 | Phím tắt | Chức năng |
 |----------|-----------|
-| `Ctrl + Space` | Bật/tắt tiếng Việt |
-| `Option + Space` | Kích hoạt AI Copilot tại con trỏ |
+| `Ctrl + Shift` *(hoặc `Ctrl + Space`)* | Bật/tắt chế độ gõ tiếng Việt |
+| `Tab` | Chấp nhận toàn bộ câu gợi ý AI |
+| `Option + Mũi tên phải (⌥→)` | Chấp nhận từng từ một của gợi ý AI |
+| `Escape (⎋)` | Huỷ gợi ý AI / Phục hồi ký tự gốc nếu gõ nhầm dấu |
+| `Space (␣)` | Tự động hoàn tác sang từ tiếng Anh nếu gõ nhầm |
 
-### Telex (mặc định)
+### Kiểu gõ Telex (mặc định)
 
 | Gõ | Kết quả |
 |----|---------|
@@ -38,8 +46,11 @@ Menu Bar → Cài đặt → Kiểu gõ → **VNI**
 | `a6`, `a8`, `o6`, `e6` | â, ă, ô, ê |
 | `o7`, `u7`, `d9` | ơ, ư, đ |
 
-### Tính năng khác
-- **AI Copilot:** Chọn text hoặc để con trỏ cuối câu → nhấn `Option + Space` để mở palette AI (sửa chính tả, viết tiếp, tóm tắt, dịch).
+### Tính năng AI Copilot
+- **Inline Ghost Text:** Khi bạn gõ dở câu và dừng lại khoảng 200ms, AI sẽ gợi ý phần viết tiếp mờ ngay sau con trỏ.
+- **Tự động bắt phong cách hội thoại:** Khi chat trên Zalo, Telegram, Slack..., AI tự động học theo ngôi xưng hô của bạn (anh/em, mình/bạn).
+- **Tránh trùng lặp từ:** Thuật toán FIM tự động nhận biết chữ phía sau con trỏ để không gợi ý đè lên chữ cũ.
+- **Tự động cập nhật:** Menu Bar → **Kiểm tra bản cập nhật** (App cũng tự động tải ngầm bản mới mỗi 1 tiếng).
 - **Gõ tắt:** Menu Bar → Cài đặt → Gõ tắt → Thêm từ viết tắt
 - **Ngoại lệ:** Menu Bar → Cài đặt → Ngoại lệ → Thêm app không muốn gõ tiếng Việt
 
