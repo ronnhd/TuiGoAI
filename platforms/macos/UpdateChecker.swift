@@ -89,7 +89,12 @@ class UpdateChecker {
             }
 
             let currentVersion = AppMetadata.version
-            let includePrerelease = currentVersion.contains("pre")
+            let lowerVersion = currentVersion.lowercased()
+            let includePrerelease = lowerVersion.contains("pre") ||
+                lowerVersion.contains("alpha") ||
+                lowerVersion.contains("beta") ||
+                lowerVersion.contains("rc") ||
+                lowerVersion.contains("-")
 
             // Find the highest version release
             // Pre-release builds check pre-releases too; stable builds only check stable

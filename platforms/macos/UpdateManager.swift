@@ -3,7 +3,7 @@ import Foundation
 import SwiftUI
 
 extension Notification.Name {
-    static let updateStateChanged = Notification.Name("gonhanh.updateStateChanged")
+    static let updateStateChanged = Notification.Name("tuigoai.updateStateChanged")
 }
 
 // MARK: - Update State
@@ -32,16 +32,15 @@ class UpdateManager: NSObject, ObservableObject {
     private var backgroundTimer: Timer?
 
     private let checkInterval: TimeInterval = 60 * 60 // 1 hour
-    private let dmgKey = "gonhanh.update.dmgPath"
-    private let versionKey = "gonhanh.update.pendingVersion"
+    private let dmgKey = "tuigoai.update.dmgPath"
+    private let versionKey = "tuigoai.update.pendingVersion"
 
     override private init() {
         super.init()
         // Restore pending update from previous session
-        if let path = UserDefaults.standard.string(forKey: dmgKey),
-           FileManager.default.fileExists(atPath: path)
-        {
-            let version = UserDefaults.standard.string(forKey: versionKey) ?? "?"
+        let path = UserDefaults.standard.string(forKey: dmgKey) ?? UserDefaults.standard.string(forKey: "gonhanh.update.dmgPath")
+        if let path, FileManager.default.fileExists(atPath: path) {
+            let version = UserDefaults.standard.string(forKey: versionKey) ?? UserDefaults.standard.string(forKey: "gonhanh.update.pendingVersion") ?? "?"
             state = .readyToInstall(dmgPath: URL(fileURLWithPath: path))
             pendingVersion = version
         }
@@ -258,7 +257,7 @@ class UpdateManager: NSObject, ObservableObject {
 extension UpdateManager: URLSessionDownloadDelegate {
     func urlSession(_: URLSession, downloadTask _: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         let cachesURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
-        let destinationURL = cachesURL.appendingPathComponent("GoNhanh-update.dmg")
+        let destinationURL = cachesURL.appendingPathComponent("TuiGoAI-update.dmg")
 
         do {
             try? FileManager.default.removeItem(at: destinationURL)
