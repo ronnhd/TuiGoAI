@@ -36,7 +36,7 @@ TuiGoAI là bộ gõ tiếng Việt mã nguồn mở dành cho macOS, kết hợ
 > **TuiGoAI đang trong giai đoạn Alpha Preview.** Bản build hiện tại được phân phối dưới dạng **Ad-hoc/Community Release** (chưa ký chứng chỉ trả phí của Apple). Chúng tôi sẽ nâng cấp lên chứng chỉ Apple Developer ID ở giai đoạn Beta và Notarization chính thức khi ra mắt Official.
 
 ### 1. Tải bộ cài
-👉 **[Tải TuiGoAI.dmg bản mới nhất từ GitHub Releases](https://github.com/ronnhd/TuiGoAI/releases)**
+- **[Tải TuiGoAI.dmg bản mới nhất từ GitHub Releases](https://github.com/ronnhd/TuiGoAI/releases)**
 
 ### 2. Cài đặt vào máy
 1. Mở file `TuiGoAI.dmg` và kéo biểu tượng **TuiGoAI** vào thư mục **Applications**.
