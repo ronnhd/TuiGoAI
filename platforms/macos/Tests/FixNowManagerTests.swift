@@ -32,4 +32,18 @@ final class FixNowManagerTests: XCTestCase {
         XCTAssertTrue(FixNowManager.fixSystemPrompt.contains("Giữ nguyên"))
         XCTAssertTrue(FixNowManager.fixSystemPrompt.contains("Không giải thích"))
     }
+
+    func testTapKeyOptionsCoverLeftAndRightVariants() {
+        let keyCodes = FixNowManager.tapKeyOptions.map { $0.keyCode }
+        XCTAssertTrue(keyCodes.contains(54)) // Right Command
+        XCTAssertTrue(keyCodes.contains(55)) // Left Command
+        XCTAssertEqual(Set(keyCodes).count, keyCodes.count, "options must be unique")
+    }
+
+    func testModifierMaskMapping() {
+        XCTAssertEqual(FixNowDoubleTapTracker.modifierMask(for: 54), .maskCommand)
+        XCTAssertEqual(FixNowDoubleTapTracker.modifierMask(for: 61), .maskAlternate)
+        XCTAssertEqual(FixNowDoubleTapTracker.modifierMask(for: 59), .maskControl)
+        XCTAssertNil(FixNowDoubleTapTracker.modifierMask(for: 0))
+    }
 }

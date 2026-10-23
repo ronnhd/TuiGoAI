@@ -23,7 +23,32 @@ public final class FixNowManager: ObservableObject {
     }
 
     nonisolated static let maxWindowCharacters = 2000
-    static let doubleTapInterval: TimeInterval = 0.4
+    nonisolated static let doubleTapInterval: TimeInterval = 0.4
+
+    // Config keys
+    nonisolated public static let fixNowEnabledKey = "tuigoai.fixnow.enabled"
+    nonisolated public static let fixNowTapKeyCodeKey = "tuigoai.fixnow.tap.keycode"
+
+    /// Modifier keycodes that support double-tap. AX flagsChanged reports the
+    /// physical key, so left and right variants are separate options.
+    nonisolated public static let tapKeyOptions: [(keyCode: UInt16, label: String)] = [
+        (54, "Right Command"),
+        (55, "Left Command"),
+        (58, "Right Option"),
+        (61, "Left Option"),
+        (59, "Right Control"),
+        (62, "Left Control")
+    ]
+
+    nonisolated public static var tapKeyCode: UInt16 {
+        let stored = UserDefaults.standard.integer(forKey: fixNowTapKeyCodeKey)
+        return (stored > 0) ? UInt16(stored) : 54
+    }
+
+    nonisolated public static var isEnabled: Bool {
+        if UserDefaults.standard.object(forKey: fixNowEnabledKey) == nil { return true }
+        return UserDefaults.standard.bool(forKey: fixNowEnabledKey)
+    }
 
     private var fixTask: Task<Void, Never>?
     private var suppressGhostUntil: Date = .distantPast
@@ -86,8 +111,9 @@ public final class FixNowManager: ObservableObject {
 
     // MARK: - Trigger from keyboard hook
 
-    /// Called from the CGEvent tap when a double Right Command tap is detected.
+    /// Called from the CGEvent tap when a double tap of the configured key is detected.
     public func trigger() {
+        guard Self.isEnabled else { return }
         guard !isFixing else { return }
         guard AIService.shared.loadConfig().isEnabled else { return }
 

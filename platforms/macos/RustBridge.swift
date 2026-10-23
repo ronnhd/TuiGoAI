@@ -1220,11 +1220,11 @@ struct ModifierChordTracker {
 
 // MARK: - FixNow Double-Tap Tracker
 
-/// Detects two quick, clean presses of the Right Command key (keycode 54).
-/// Any other modifier held during the tap, or any non-modifier key pressed
-/// between taps, resets the tracker so combos like Cmd+Tab never trigger.
+/// Detects two quick, clean presses of the configured modifier key (default
+/// Right Command, keycode 54). Any other modifier held during the tap, or any
+/// non-modifier key pressed between taps, resets the tracker so combos like
+/// Cmd+Tab never trigger.
 struct FixNowDoubleTapTracker {
-    static let rightCommandKeyCode: UInt16 = 54
     static let maxInterval: TimeInterval = 0.4
 
     private var firstTapAt: Date?
@@ -1232,11 +1232,14 @@ struct FixNowDoubleTapTracker {
 
     /// Feed a flagsChanged event. Returns true when a double tap completes.
     mutating func flagsChanged(keyCode: UInt16, mods: CGEventFlags) -> Bool? {
-        guard keyCode == Self.rightCommandKeyCode else { return nil }
-        if mods.contains(.maskCommand) {
-            // Right Command pressed
-            if mods.subtracting(.maskCommand).rawValue & ~CGEventFlags.maskSecondaryFn.rawValue != 0 {
-                // Another modifier is held: not a clean tap
+        guard keyCode == FixNowManager.tapKeyCode else { return nil }
+        guard let expected = Self.modifierMask(for: keyCode) else { return nil }
+        if mods.contains(expected) {
+            // The configured modifier was pressed. Reject if any other
+            // modifier is held (fn bit tolerated).
+            let allowed = expected.union(.maskSecondaryFn)
+            let others = mods.intersection(Self.allModifierMasks).subtracting(allowed)
+            if !others.isEmpty {
                 firstTapAt = nil
                 return nil
             }
@@ -1255,6 +1258,18 @@ struct FixNowDoubleTapTracker {
     /// A non-modifier key was pressed between taps: reset.
     mutating func noteOtherKey() {
         firstTapAt = nil
+    }
+
+    static let allModifierMasks: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift]
+
+    static func modifierMask(for keyCode: UInt16) -> CGEventFlags? {
+        switch keyCode {
+        case 54, 55: return .maskCommand
+        case 58, 61: return .maskAlternate
+        case 59, 62: return .maskControl
+        case 56, 60: return .maskShift
+        default: return nil
+        }
     }
 }
 

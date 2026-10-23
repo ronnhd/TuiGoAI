@@ -11,6 +11,8 @@ struct AISettingsView: View {
     @AppStorage(GhostTextManager.displayModeKey) private var displayMode = "inline"
     @AppStorage(GhostTextManager.completionLengthKey) private var completionLength = "medium"
     @AppStorage(GhostTextManager.clipboardContextEnabledKey) private var clipboardContextEnabled = true
+    @AppStorage(FixNowManager.fixNowEnabledKey) private var fixNowEnabled = true
+    @AppStorage(FixNowManager.fixNowTapKeyCodeKey) private var fixNowTapKeyCode = 54
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -176,6 +178,35 @@ struct AISettingsView: View {
                             title: "Bật / tắt AI Copilot",
                             subtitle: "Phím tắt chuyển nhanh trạng thái hoạt động của AI"
                         )
+                    }
+                    .flatCard()
+                }
+
+                // FixNow: sửa THEO câu tại chỗ
+                VStack(alignment: .leading, spacing: 6) {
+                    SettingSectionHeader(title: "FixNow")
+
+                    VStack(spacing: 0) {
+                        SettingToggleRow(
+                            title: "Bật FixNow",
+                            description: "Double-tap phím để sửa chính tả, ngữ pháp, dấu câu ngay trong ô đang gõ, giữ nguyên giọng văn.",
+                            isOn: $fixNowEnabled
+                        )
+
+                        Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                        SettingRow(
+                            title: "Phím double-tap",
+                            description: "Nhấn hai lần liên tiếp phím này để sửa các câu gần nhất trước con trỏ"
+                        ) {
+                            Picker("", selection: $fixNowTapKeyCode) {
+                                ForEach(FixNowManager.tapKeyOptions, id: \.keyCode) { option in
+                                    Text(verbatim: option.label).tag(Int(option.keyCode))
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(width: 175)
+                        }
                     }
                     .flatCard()
                 }
