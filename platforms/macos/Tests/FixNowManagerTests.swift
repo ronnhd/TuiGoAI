@@ -46,4 +46,30 @@ final class FixNowManagerTests: XCTestCase {
         XCTAssertEqual(FixNowDoubleTapTracker.modifierMask(for: 59), .maskControl)
         XCTAssertNil(FixNowDoubleTapTracker.modifierMask(for: 0))
     }
+
+    func testLooksLikeCorrectedProseRejectsMetaAnswer() {
+        let original = "Toi dang lam viec o cong ty moi"
+        XCTAssertFalse(FixNowManager.looksLikeCorrectedProse(
+            "Không có lỗi chính tả, ngữ pháp, hoặc dấu câu cần sửa trong đoạn văn bản này.",
+            original: original
+        ))
+    }
+
+    func testLooksLikeCorrectedProseAcceptsRealEdit() {
+        let original = "Toi dang lam viec o cong ty moi"
+        let corrected = "Tôi đang làm việc ở công ty mới"
+        XCTAssertTrue(FixNowManager.looksLikeCorrectedProse(corrected, original: original))
+    }
+
+    func testLooksLikeCorrectedProseRejectsHallucination() {
+        let original = "Toi dang lam viec o cong ty moi"
+        XCTAssertFalse(FixNowManager.looksLikeCorrectedProse(
+            "The weather in Da Lat is quite nice today for traveling",
+            original: original
+        ))
+    }
+
+    func testWindowCharactersDefaultIsConfigurable() {
+        XCTAssertEqual(FixNowManager.windowCharacters >= 300, true)
+    }
 }

@@ -13,6 +13,7 @@ struct AISettingsView: View {
     @AppStorage(GhostTextManager.clipboardContextEnabledKey) private var clipboardContextEnabled = true
     @AppStorage(FixNowManager.fixNowEnabledKey) private var fixNowEnabled = true
     @AppStorage(FixNowManager.fixNowTapKeyCodeKey) private var fixNowTapKeyCode = 54
+    @AppStorage(FixNowManager.fixNowWindowKey) private var fixNowWindow = 800
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -206,6 +207,30 @@ struct AISettingsView: View {
                             }
                             .labelsHidden()
                             .frame(width: 175)
+                        }
+
+                        Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                        SettingRow(
+                            title: "Phạm vi câu",
+                            description: "Số ký tự tối đa trước con trỏ được lấy để sửa. Ngắn sửa nhanh hơn."
+                        ) {
+                            Picker("", selection: $fixNowWindow) {
+                                Text("Ngắn (500)").tag(500)
+                                Text("Vừa (800)").tag(800)
+                                Text("Dài (2000)").tag(2000)
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(width: 210)
+                        }
+
+                        Divider().overlay(Theme.divider).padding(.leading, 14)
+
+                        SettingRow(
+                            title: "Trạng thái gần nhất",
+                            description: FixNowManager.shared.lastStatus
+                        ) {
+                            EmptyView()
                         }
                     }
                     .flatCard()

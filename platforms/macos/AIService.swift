@@ -372,14 +372,18 @@ public final class AIService: @unchecked Sendable {
         guard !model.isEmpty else { throw AIError.noResponse }
 
         let endpoint = URL(string: "http://localhost:11434/api/generate")!
+        let nfcText = text.precomposedStringWithCanonicalMapping
         let prompt = """
         <|im_start|>system
         \(FixNowManager.fixSystemPrompt)<|im_end|>
         <|im_start|>user
-        \(FixNowManager.buildFixUserPrompt(text))<|im_end|>
+        \(FixNowManager.buildFixUserPrompt(nfcText))<|im_end|>
         <|im_start|>assistant
 
         """
+        // The corrected text is roughly as long as the input. Capping
+        // generation near the input length keeps latency proportional instead
+        // of letting a runaway model stream thousands of tokens.
         let payload = OllamaGenerateRequest(
             model: model,
             prompt: prompt,
@@ -390,7 +394,7 @@ public final class AIService: @unchecked Sendable {
                 topP: 0.8,
                 topK: 20,
                 repeatPenalty: 1.0,
-                numPredict: text.count + 100,
+                numPredict: max(32, nfcText.utf16.count + 24),
                 stop: ["<|im_end|>", "<|endoftext|>"]
             ),
             keepAlive: "5m"
