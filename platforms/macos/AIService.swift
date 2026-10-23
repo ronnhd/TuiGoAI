@@ -363,6 +363,61 @@ public final class AIService: @unchecked Sendable {
             .filter { !$0.isEmpty }
     }
 
+    // MARK: - Feature: FixNow in-place correction
+
+    public func fixSpelling(_ text: String) async throws -> String {
+        let config = loadConfig()
+        guard config.isEnabled else { throw AIError.serviceDisabled }
+        let model = config.model.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !model.isEmpty else { throw AIError.noResponse }
+
+        let endpoint = URL(string: "http://localhost:11434/api/generate")!
+        let prompt = """
+        <|im_start|>system
+        \(FixNowManager.fixSystemPrompt)<|im_end|>
+        <|im_start|>user
+        \(FixNowManager.buildFixUserPrompt(text))<|im_end|>
+        <|im_start|>assistant
+
+        """
+        let payload = OllamaGenerateRequest(
+            model: model,
+            prompt: prompt,
+            raw: true,
+            stream: false,
+            options: OllamaGenerateRequest.Options(
+                temperature: 0.1,
+                topP: 0.8,
+                topK: 20,
+                repeatPenalty: 1.0,
+                numPredict: text.count + 100,
+                stop: ["<|im_end|>", "<|endoftext|>"]
+            ),
+            keepAlive: "5m"
+        )
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 60
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(payload)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await urlSession.data(for: request)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw AIError.networkError(error.localizedDescription)
+        }
+        guard let http = response as? HTTPURLResponse else { throw AIError.noResponse }
+        guard (200 ... 299).contains(http.statusCode) else {
+            throw AIError.httpError(statusCode: http.statusCode, message: String(data: data, encoding: .utf8) ?? "Ollama error")
+        }
+        let result = try JSONDecoder().decode(OllamaGenerateResponse.self, from: data)
+        guard let raw = result.response, !raw.isEmpty else { throw AIError.noResponse }
+        return raw.precomposedStringWithCanonicalMapping
+    }
+
     // MARK: - Foundation Feature: Ghost Text Autocomplete
 
     public func suggestCompletion(

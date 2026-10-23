@@ -1218,12 +1218,53 @@ struct ModifierChordTracker {
     }
 }
 
+// MARK: - FixNow Double-Tap Tracker
+
+/// Detects two quick, clean presses of the Right Command key (keycode 54).
+/// Any other modifier held during the tap, or any non-modifier key pressed
+/// between taps, resets the tracker so combos like Cmd+Tab never trigger.
+struct FixNowDoubleTapTracker {
+    static let rightCommandKeyCode: UInt16 = 54
+    static let maxInterval: TimeInterval = 0.4
+
+    private var firstTapAt: Date?
+    private let clock = { Date() }
+
+    /// Feed a flagsChanged event. Returns true when a double tap completes.
+    mutating func flagsChanged(keyCode: UInt16, mods: CGEventFlags) -> Bool? {
+        guard keyCode == Self.rightCommandKeyCode else { return nil }
+        if mods.contains(.maskCommand) {
+            // Right Command pressed
+            if mods.subtracting(.maskCommand).rawValue & ~CGEventFlags.maskSecondaryFn.rawValue != 0 {
+                // Another modifier is held: not a clean tap
+                firstTapAt = nil
+                return nil
+            }
+            let now = clock()
+            if let first = firstTapAt, now.timeIntervalSince(first) <= Self.maxInterval {
+                firstTapAt = nil
+                return true
+            }
+            firstTapAt = now
+            return nil
+        }
+        // Released
+        return nil
+    }
+
+    /// A non-modifier key was pressed between taps: reset.
+    mutating func noteOtherKey() {
+        firstTapAt = nil
+    }
+}
+
 // MARK: - Keyboard Callback
 
 private let kEventMarker: Int64 = 0x474E_4820 // "GNH "
 private let kModifierMask: CGEventFlags = [.maskSecondaryFn, .maskControl, .maskAlternate, .maskShift, .maskCommand]
 // Modifier-only shortcut detection state (see ModifierChordTracker).
 private var modifierChord = ModifierChordTracker()
+private var fixNowDoubleTapTracker = FixNowDoubleTapTracker()
 private var currentShortcut = KeyboardShortcut.load()
 private var currentRestoreShortcut = KeyboardShortcut.loadRestoreShortcut()
 private var currentSecondaryShortcut = KeyboardShortcut.activeSecondaryToggle() // nil when disabled
@@ -1523,6 +1564,18 @@ private func keyboardCallback(
         }
         wasControlPressed = isControlNowPressed
 
+        // FixNow: double-tap Right Command (keycode 54, right side bit set)
+        if let fixTap = fixNowDoubleTapTracker.flagsChanged(
+            keyCode: UInt16(event.getIntegerValueField(.keyboardEventKeycode)),
+            mods: flags.intersection(kModifierMask)
+        ) {
+            _ = fixTap
+            DispatchQueue.main.async {
+                FixNowManager.shared.trigger()
+            }
+            return Unmanaged.passUnretained(event)
+        }
+
         // Fire toggle/restore only on a clean press-and-release of the exact combo
         // (see ModifierChordTracker).
         if let peak = modifierChord.modifiersChanged(to: flags.intersection(kModifierMask)) {
@@ -1544,6 +1597,7 @@ private func keyboardCallback(
 
     // A key press while modifiers are held invalidates the chord (see ModifierChordTracker).
     modifierChord.keyPressed(modifiersHeld: flags.intersection(kModifierMask))
+    fixNowDoubleTapTracker.noteOtherKey()
 
     if event.getIntegerValueField(.eventSourceUserData) == kEventMarker {
         return Unmanaged.passUnretained(event)

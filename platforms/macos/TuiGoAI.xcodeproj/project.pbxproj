@@ -24,6 +24,7 @@
 		AISET001 /* AISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AISET002 /* AISettingsView.swift */; };
 		AITEST001 /* AIServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AITEST002 /* AIServiceTests.swift */; };
 		CHATHISTTEST001 /* ChatHistoryBufferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CHATHISTTEST002 /* ChatHistoryBufferTests.swift */; };
+		FIXNOWTEST001 /* FixNowManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FIXNOWTEST002 /* FixNowManagerTests.swift */; };
 		APKRSH001 /* AppPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = APKRSH002 /* AppPickerSheet.swift */; };
 		B1000001000000000000001 /* KeyboardShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002000000000000001 /* KeyboardShortcutTests.swift */; };
 		B1000001000000000000002 /* LaunchAtLoginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002000000000000002 /* LaunchAtLoginTests.swift */; };
@@ -38,6 +39,7 @@
 		UPDATECHK001 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = UPDATECHK002 /* UpdateChecker.swift */; };
 		THEME001 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = THEME002 /* Theme.swift */; };
 		CHATHIST001 /* ChatHistoryBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CHATHIST002 /* ChatHistoryBuffer.swift */; };
+		FIXNOW001 /* FixNowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FIXNOW002 /* FixNowManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,6 +72,7 @@
 		AISET002 /* AISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsView.swift; sourceTree = "<group>"; };
 		AITEST002 /* AIServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIServiceTests.swift; sourceTree = "<group>"; };
 		CHATHISTTEST002 /* ChatHistoryBufferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatHistoryBufferTests.swift; sourceTree = "<group>"; };
+		FIXNOWTEST002 /* FixNowManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixNowManagerTests.swift; sourceTree = "<group>"; };
 		APKRSH002 /* AppPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPickerSheet.swift; sourceTree = "<group>"; };
 		B1000002000000000000001 /* KeyboardShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutTests.swift; sourceTree = "<group>"; };
 		B1000002000000000000002 /* LaunchAtLoginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginTests.swift; sourceTree = "<group>"; };
@@ -85,6 +88,7 @@
 		UPDATECHK002 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		THEME002 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		CHATHIST002 /* ChatHistoryBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatHistoryBuffer.swift; sourceTree = "<group>"; };
+		FIXNOW002 /* FixNowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixNowManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -117,6 +121,7 @@
 				AISET002 /* AISettingsView.swift */,
 				THEME002 /* Theme.swift */,
 				CHATHIST002 /* ChatHistoryBuffer.swift */,
+				FIXNOW002 /* FixNowManager.swift */,
 				CHANGELOG002 /* ChangelogWindow.swift */,
 				A1000002000000000000001 /* App.swift */,
 				A1000002000000000000002 /* MenuBar.swift */,
@@ -156,6 +161,7 @@
 				B1000002000000000000001 /* KeyboardShortcutTests.swift */,
 				AITEST002 /* AIServiceTests.swift */,
 				CHATHISTTEST002 /* ChatHistoryBufferTests.swift */,
+				FIXNOWTEST002 /* FixNowManagerTests.swift */,
 				B1000002000000000000002 /* LaunchAtLoginTests.swift */,
 				B1000002000000000000003 /* SoundManagerTests.swift */,
 			);
@@ -273,6 +279,7 @@
 				AISET001 /* AISettingsView.swift in Sources */,
 				THEME001 /* Theme.swift in Sources */,
 				CHATHIST001 /* ChatHistoryBuffer.swift in Sources */,
+				FIXNOW001 /* FixNowManager.swift in Sources */,
 				CHANGELOG001 /* ChangelogWindow.swift in Sources */,
 				A1000001000000000000001 /* App.swift in Sources */,
 				A1000001000000000000002 /* MenuBar.swift in Sources */,
@@ -299,6 +306,7 @@
 				B1000001000000000000001 /* KeyboardShortcutTests.swift in Sources */,
 				AITEST001 /* AIServiceTests.swift in Sources */,
 				CHATHISTTEST001 /* ChatHistoryBufferTests.swift in Sources */,
+				FIXNOWTEST001 /* FixNowManagerTests.swift in Sources */,
 				B1000001000000000000002 /* LaunchAtLoginTests.swift in Sources */,
 				B1000001000000000000003 /* SoundManagerTests.swift in Sources */,
 			);

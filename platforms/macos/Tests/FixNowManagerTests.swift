@@ -1,0 +1,35 @@
+import XCTest
+@testable import TuiGoAI
+
+final class FixNowManagerTests: XCTestCase {
+    func testSentenceWindowShortTextReturnsWhole() {
+        let text = "Toi dang lam viec. Ban co khong?"
+        XCTAssertEqual(FixNowManager.sentenceWindow(in: text), text)
+    }
+
+    func testSentenceWindowCutsToCompleteSentences() {
+        let s1 = String(repeating: "a", count: 700) + ". "
+        let s2 = String(repeating: "b", count: 700) + ". "
+        let s3 = String(repeating: "c", count: 700) + ". "
+        let text = s1 + s2 + s3 // 2106 chars, window cap 2000 cuts into s2
+        let window = FixNowManager.sentenceWindow(in: text)
+        XCTAssertFalse(window.hasPrefix("b")) // s2 must not be half-included
+        XCTAssertTrue(window.hasPrefix("cccc")) // window starts at the last full sentence
+        XCTAssertEqual(window, s3.trimmingCharacters(in: .whitespaces))
+    }
+
+    func testSentenceWindowEmptyReturnsEmpty() {
+        XCTAssertEqual(FixNowManager.sentenceWindow(in: "   "), "")
+    }
+
+    func testFixUserPromptContainsText() {
+        let prompt = FixNowManager.buildFixUserPrompt("Toi dang hop.")
+        XCTAssertTrue(prompt.contains("Toi dang hop."))
+        XCTAssertTrue(prompt.contains("Sửa lỗi chính tả"))
+    }
+
+    func testFixSystemPromptMentionsConstraints() {
+        XCTAssertTrue(FixNowManager.fixSystemPrompt.contains("Giữ nguyên"))
+        XCTAssertTrue(FixNowManager.fixSystemPrompt.contains("Không giải thích"))
+    }
+}
